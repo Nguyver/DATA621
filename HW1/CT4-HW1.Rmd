@@ -1,0 +1,21 @@
+---
+title: "CT4 - HW1"
+author: "Sreejaya, Suman, Vuthy"
+date: "September 12, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Critical Thinking Group 4 - HW1
+
+Let me know what you guys think. We can use this file to do the coding and document details for each other. At the end, when we are done, we put together a much cleaner document without all the details and code we left for each other.  
+
+Read in the file to do Exploratory Data Analysis
+```{r}
+moneyball <- read.csv("moneyball-evaluation-data.csv", header=TRUE, sep=",")
+head(moneyball)
+summary(moneyball)
+```
