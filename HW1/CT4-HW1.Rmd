@@ -15,7 +15,34 @@ Let me know what you guys think. We can use this file to do the coding and docum
 
 Read in the file to do Exploratory Data Analysis
 ```{r}
-moneyball <- read.csv("moneyball-evaluation-data.csv", header=TRUE, sep=",")
-head(moneyball)
-summary(moneyball)
+#read directly from the github
+moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+head(moneyballTraining)
+summary(moneyballTraining)
+
+#Cleaning ?
+
+
+#Data Exploration:
+
+# 'TARGET_WINS' is the Dependent/Response variable here. And below are the independent (/exploratory) variables.
+# Indpendent Variables: TEAM_BATTING_H TEAM_BATTING_2B TEAM_BATTING_3B  TEAM_BATTING_HR  TEAM_BATTING_BB TEAM_BATTING_SO  TEAM_BASERUN_SB TEAM_BASERUN_CS
+
+# Let us try to explore each of the exploratory variable's distribution [histogram, boxplot - to understand the distribution and identify outliers etc.]
+# Let us also explore how each of the independent variable related to the response variable ( using scatter plot )
+# what else ?
+
+#
+library(ggplot2)
+
+# Explore independent variable TEAM_BATTING_H
+ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + ggtitle(paste("Histogram  - " , "TEAM_BATTING_H")) 
+
+qplot(y=moneyballTraining$TEAM_BATTING_H, x= 1, geom = "boxplot")
+
+
+
+
+
 ```
