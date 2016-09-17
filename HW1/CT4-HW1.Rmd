@@ -41,6 +41,7 @@ ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidt
 
 qplot(y=moneyballTraining$TEAM_BATTING_H, x= 1, geom = "boxplot")
 
+ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
 
 
 
