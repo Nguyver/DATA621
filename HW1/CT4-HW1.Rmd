@@ -13,12 +13,24 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Let me know what you guys think. We can use this file to do the coding and document details for each other. At the end, when we are done, we put together a much cleaner document without all the details and code we left for each other.  
 
+
+```{r}
+## load libraries ####
+
+library(RCurl)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
 Read in the file to do Exploratory Data Analysis
+
 ```{r}
 #read directly from the github
 moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
 head(moneyballTraining)
+names(moneyballTraining)
 summary(moneyballTraining)
 
 #Cleaning ?
@@ -43,6 +55,74 @@ qplot(y=moneyballTraining$TEAM_BATTING_H, x= 1, geom = "boxplot")
 
 ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
 
+```
+
+Predictor Variables  Vs Response variable(Target win)
+```{r}
+
+##sreejaya 
+
+
+moneyballtrain.URL <- getURL("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv")
+moneyballTraining <- read.csv(text = moneyballtrain.URL,header = TRUE, stringsAsFactors = FALSE)
+
+#plt_TEAM_BATTING_H<-ggplot(data = moneyballTraining,aes(x=TEAM_BATTING_H,y=TARGET_WINS)) + geom_point() + #geom_smooth(method=glm)  + ggtitle(paste("Plot  - " , "TEAM_BATTING_H")) 
+
+plt_TEAM_BATTING_H <- ggplot(moneyballTraining, aes(TEAM_BATTING_H,TARGET_WINS))
+plt_TEAM_BATTING_H <-plt_TEAM_BATTING_H + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_H"))
+
+plt_TEAM_BATTING_2B <- ggplot(moneyballTraining, aes(TEAM_BATTING_2B,TARGET_WINS))
+plt_TEAM_BATTING_2B <-plt_TEAM_BATTING_2B + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_2B"))
+
+plt_TEAM_BATTING_3B <- ggplot(moneyballTraining, aes(TEAM_BATTING_3B,TARGET_WINS))
+plt_TEAM_BATTING_3B <-plt_TEAM_BATTING_3B + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_3B"))
+
+plt_TEAM_BATTING_HR <- ggplot(moneyballTraining, aes(TEAM_BATTING_HR,TARGET_WINS))
+plt_TEAM_BATTING_HR <-plt_TEAM_BATTING_HR + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_HR"))
+
+plt_TEAM_BATTING_BB <- ggplot(moneyballTraining, aes(TEAM_BATTING_BB,TARGET_WINS))
+plt_TEAM_BATTING_BB <-plt_TEAM_BATTING_BB + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_BB"))
+
+plt_TEAM_BATTING_SO <- ggplot(moneyballTraining, aes(TEAM_BATTING_SO,TARGET_WINS))
+plt_TEAM_BATTING_SO <-plt_TEAM_BATTING_SO + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_SO"))
+
+plt_TEAM_BASERUN_SB <- ggplot(moneyballTraining, aes(TEAM_BASERUN_SB,TARGET_WINS))
+plt_TEAM_BASERUN_SB <-plt_TEAM_BASERUN_SB + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BASERUN_SB"))
+
+
+plt_TEAM_BASERUN_CS <- ggplot(moneyballTraining, aes(TEAM_BASERUN_CS,TARGET_WINS))
+plt_TEAM_BASERUN_CS <-plt_TEAM_BASERUN_CS + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BASERUN_CS"))
+
+plt_TEAM_BATTING_HBP <- ggplot(moneyballTraining, aes(TEAM_BATTING_HBP,TARGET_WINS))
+plt_TEAM_BATTING_HBP <-plt_TEAM_BATTING_HBP + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_HBP"))
+
+plt_TEAM_PITCHING_H <- ggplot(moneyballTraining, aes(TEAM_PITCHING_H,TARGET_WINS))
+plt_TEAM_PITCHING_H <-plt_TEAM_PITCHING_H + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_H"))
+
+plt_TEAM_PITCHING_HR <- ggplot(moneyballTraining, aes(TEAM_PITCHING_HR,TARGET_WINS))
+plt_TEAM_PITCHING_HR <-plt_TEAM_PITCHING_HR + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_HR"))
+
+plt_TEAM_PITCHING_BB <- ggplot(moneyballTraining, aes(TEAM_PITCHING_BB,TARGET_WINS))
+plt_TEAM_PITCHING_BB <-plt_TEAM_PITCHING_BB + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_BB"))
+
+plt_TEAM_PITCHING_SO <- ggplot(moneyballTraining, aes(TEAM_PITCHING_SO,TARGET_WINS))
+plt_TEAM_PITCHING_SO <-plt_TEAM_PITCHING_SO + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_SO"))
+
+plt_TEAM_FIELDING_E <- ggplot(moneyballTraining, aes(TEAM_FIELDING_E,TARGET_WINS))
+plt_TEAM_FIELDING_E <-plt_TEAM_FIELDING_E + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_FIELDING_E"))
+
+plt_TEAM_FIELDING_DP <- ggplot(moneyballTraining, aes(TEAM_FIELDING_DP,TARGET_WINS))
+plt_TEAM_FIELDING_DP <-plt_TEAM_FIELDING_DP + stat_smooth(method=gam) + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_FIELDING_DP"))
+
+#All Predictor Variables
+grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_TEAM_BATTING_HR, plt_TEAM_BATTING_BB,plt_TEAM_BATTING_SO, plt_TEAM_BASERUN_SB, plt_TEAM_BASERUN_CS, plt_TEAM_BATTING_HBP, plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR, plt_TEAM_PITCHING_SO, plt_TEAM_FIELDING_E, plt_TEAM_FIELDING_DP, plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
+
+#positive impact on wins
+
+grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_TEAM_BATTING_HR, plt_TEAM_BATTING_BB, plt_TEAM_BASERUN_SB,  plt_TEAM_BATTING_HBP,   plt_TEAM_PITCHING_SO,  plt_TEAM_FIELDING_DP,   ncol = 3, nrow = 5)
+
+#negative impact on wins
+grid.arrange(plt_TEAM_BATTING_SO,  plt_TEAM_BASERUN_CS,  plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR,  plt_TEAM_FIELDING_E,  plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
 
 
 
