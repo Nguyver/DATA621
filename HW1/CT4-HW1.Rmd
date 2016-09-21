@@ -57,15 +57,100 @@ ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WI
 
 ```
 
-Predictor Variables  Vs Response variable(Target win)
+
+sreejaya
 ```{r}
-
-##sreejaya 
-
+##Load Data
 
 moneyballtrain.URL <- getURL("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv")
 moneyballTraining <- read.csv(text = moneyballtrain.URL,header = TRUE, stringsAsFactors = FALSE)
+names(moneyballTraining)
 
+
+
+```
+Finding Outliers using boxplot
+```{r}
+
+###
+##boxplot(moneyballTraining[3:17], las = 2)
+
+#par(mfrow=c(5,3)) 
+#boxplot(moneyballTraining$TEAM_BATTING_HR)
+#hist(moneyballTraining$TEAM_BATTING_HR)
+
+#boxplot(moneyballTraining$TEAM_BASERUN_SB)
+#hist(moneyballTraining$TEAM_BASERUN_SB)
+
+#boxplot(moneyballTraining$TEAM_PITCHING_H)
+#hist(moneyballTraining$TEAM_PITCHING_H)
+###
+
+summary(moneyballTraining[3:17])
+
+#Replacing Missing Values In dataset with column mean
+for(i in 1:ncol(moneyballTraining)){
+  moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
+}
+
+```
+
+
+```{r}
+Box plot to find outliers
+par(mfrow=c(3,5))
+boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
+boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
+boxplot(moneyballTraining$TEAM_BATTING_3B, main="TEAM_BATTING_3B")
+boxplot(moneyballTraining$TEAM_BATTING_HR, main="TEAM_BATTING_HR")
+boxplot(moneyballTraining$TEAM_BATTING_BB, main="TEAM_BATTING_BB")
+
+boxplot(moneyballTraining$TEAM_BATTING_SO, main="TEAM_BATTING_SO")
+boxplot(moneyballTraining$TEAM_BASERUN_SB, main="TEAM_BASERUN_SB")
+boxplot(moneyballTraining$TEAM_BASERUN_CS, main="TEAM_BASERUN_CS")
+boxplot(moneyballTraining$TEAM_BATTING_HBP, main="TEAM_BATTING_HBP")
+boxplot(moneyballTraining$TEAM_PITCHING_H, main="TEAM_PITCHING_H")
+
+boxplot(moneyballTraining$TEAM_PITCHING_HR, main="TEAM_PITCHING_HR")
+boxplot(moneyballTraining$TEAM_PITCHING_BB, main="TEAM_PITCHING_BB")
+boxplot(moneyballTraining$TEAM_PITCHING_SO, main="TEAM_PITCHING_SO")
+boxplot(moneyballTraining$TEAM_FIELDING_E, main="TEAM_FIELDING_E")
+boxplot(moneyballTraining$TEAM_FIELDING_DP, main="TEAM_FIELDING_DP")
+```
+
+
+Removing Outliers
+```{r}
+#
+# comparing median to mean. Usually median and mean should be the same. But if median is far lower than the mean it could suggest that there are outliers.
+
+#from the BoxPlot we see otliers for 
+
+#TEAM_BATTING_3B, TEAM_BASERUN_SB,TEAM_BASERUN_CS, TEAM_PITCHING_H, TEAM_PITCHING_BB, TEAM_PITCHING_#SO, TEAM_FIELDING_E
+# since TEAM_BASERUN_CS and TEAM_PITCHING_SO have same mean and median we can assume that they dont have ant outliers.
+
+##?? do we need to remove zero's? Max values seems reasonable or not??
+```
+
+find correlation of Response variable with predictor variables
+```{r}
+
+corData <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
+library(reshape)
+t(corData[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
+moneyballTraining.cor <- melt(t(corData[2,c(2:17)])) # convert the wide format to long form for ease of read
+
+## TEAM_BATTING_SO,TEAM_PITCHING_H, TEAM_PITCHING_SO, TEAM_FIELDING_E, TEAM_FIELDING_DP have negative correlation with total win.
+
+## TEAM_BASERUN_CS, TEAM_BATTING_HBP have very low correlation with Total win. So we dont have to consider these variables in the MODEL
+
+
+```
+
+Predictor Variables  Vs Response variable(Target win) 
+Correlation Visualization
+```{r}
+ 
 #plt_TEAM_BATTING_H<-ggplot(data = moneyballTraining,aes(x=TEAM_BATTING_H,y=TARGET_WINS)) + geom_point() + #geom_smooth(method=glm)  + ggtitle(paste("Plot  - " , "TEAM_BATTING_H")) 
 
 plt_TEAM_BATTING_H <- ggplot(moneyballTraining, aes(TEAM_BATTING_H,TARGET_WINS))
@@ -123,7 +208,6 @@ grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_T
 
 #negative impact on wins
 grid.arrange(plt_TEAM_BATTING_SO,  plt_TEAM_BASERUN_CS,  plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR,  plt_TEAM_FIELDING_E,  plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
-
 
 
 ```
