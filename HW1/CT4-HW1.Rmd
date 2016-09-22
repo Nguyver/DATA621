@@ -95,9 +95,8 @@ for(i in 1:ncol(moneyballTraining)){
 
 ```
 
-
-```{r}
 Box plot to find outliers
+```{r}
 par(mfrow=c(3,5))
 boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
 boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
