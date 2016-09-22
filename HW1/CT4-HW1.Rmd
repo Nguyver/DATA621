@@ -21,6 +21,7 @@ library(RCurl)
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(psych)
 ```
 
 Read in the file to do Exploratory Data Analysis
@@ -69,35 +70,45 @@ names(moneyballTraining)
 
 
 ```
-Finding Outliers using boxplot
+
+Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
 
-###
-##boxplot(moneyballTraining[3:17], las = 2)
-
-#par(mfrow=c(5,3)) 
-#boxplot(moneyballTraining$TEAM_BATTING_HR)
-#hist(moneyballTraining$TEAM_BATTING_HR)
-
-#boxplot(moneyballTraining$TEAM_BASERUN_SB)
-#hist(moneyballTraining$TEAM_BASERUN_SB)
-
-#boxplot(moneyballTraining$TEAM_PITCHING_H)
-#hist(moneyballTraining$TEAM_PITCHING_H)
-###
-
 summary(moneyballTraining[3:17])
+
+dev.off()
+
+#Visualize the Standard deviations in all the independent variables -Suman.
+#--------------------------------------------------------------------------
+getStandardDev <- function(moneyballTraining)
+{
+  stdDevs <- SD(moneyballTraining[3:17])
+  stdDevs[order(stdDevs, decreasing = T)]
+  
+  par(mai=c(3,1.2,1,1))
+  
+  # transformed the y, due to high variances.
+  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
+  +mtext("Predictors", side=1, line = 8.5, las=1)
+  return(stdDev)
+}
+
+
+getStandardDev(moneyballTraining)
+#--------------------------------------------------------------------------
 
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballTraining)){
   moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
 }
 
+#After imputation , verify the standard deviation again.
+getStandardDev(moneyballTraining)
 ```
 
-
+Finding Outliers using boxplot
 ```{r}
-Box plot to find outliers
+#Box plot to find outliers
 par(mfrow=c(3,5))
 boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
 boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
