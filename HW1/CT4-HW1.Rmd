@@ -106,14 +106,9 @@ for(i in 1:ncol(moneyballTraining)){
 getStandardDev(moneyballTraining)
 ```
 
-<<<<<<< HEAD
 Finding Outliers using boxplot
 ```{r}
 #Box plot to find outliers
-=======
-Box plot to find outliers
-```{r}
->>>>>>> origin/master
 par(mfrow=c(3,5))
 boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
 boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
