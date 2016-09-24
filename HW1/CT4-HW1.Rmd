@@ -43,31 +43,32 @@ There are a few variables that are missing data.
 - TEAM_FIELDING_DP (Double Plays): 286
 
 ```{r}
+head(moneyballTraining)
+names(moneyballTraining)
 summary(moneyballTraining)
 ```
 
 Some of the data might have outliers. There are a few histograms with long tails.
 ```{r}
-hist(moneyballTraining$TARGET_WINS)
-hist(moneyballTraining$TEAM_BATTING_H)
-hist(moneyballTraining$TEAM_BATTING_2B)
-hist(moneyballTraining$TEAM_BATTING_3B)
+#hist(moneyballTraining$TARGET_WINS)
+#hist(moneyballTraining$TEAM_BATTING_H)
+#hist(moneyballTraining$TEAM_BATTING_2B)
+#hist(moneyballTraining$TEAM_BATTING_3B)
 
-hist(moneyballTraining$TEAM_BATTING_HR)
-hist(moneyballTraining$TEAM_BATTING_BB)
-hist(moneyballTraining$TEAM_BATTING_HBP)
-hist(moneyballTraining$TEAM_BATTING_SO)
+#hist(moneyballTraining$TEAM_BATTING_HR)
+#hist(moneyballTraining$TEAM_BATTING_BB)
+#hist(moneyballTraining$TEAM_BATTING_HBP)
+#hist(moneyballTraining$TEAM_BATTING_SO)
 
 hist(moneyballTraining$TEAM_BASERUN_SB)
-hist(moneyballTraining$TEAM_BASERUN_CS)
+#hist(moneyballTraining$TEAM_BASERUN_CS)
 hist(moneyballTraining$TEAM_FIELDING_E)
-hist(moneyballTraining$TEAM_FIELDING_DP)
+#hist(moneyballTraining$TEAM_FIELDING_DP)
 
 hist(moneyballTraining$TEAM_PITCHING_BB)
 hist(moneyballTraining$TEAM_PITCHING_H)
-hist(moneyballTraining$TEAM_PITCHING_HR)
+#hist(moneyballTraining$TEAM_PITCHING_HR)
 hist(moneyballTraining$TEAM_PITCHING_SO)
-
 ```
 
 ## DATA PREPARATION
@@ -128,7 +129,7 @@ summary(moneyballTraining)
 # what else ?
 
 #
-library(ggplot2)
+#library(ggplot2)
 
 # Explore independent variable TEAM_BATTING_H
 ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + ggtitle(paste("Histogram  - " , "TEAM_BATTING_H")) 
