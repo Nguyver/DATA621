@@ -9,19 +9,100 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-##Critical Thinking Group 4 - HW1
+```{r echo=FALSE}
+suppressMessages(library(RCurl))
+suppressMessages(library(dplyr))
+suppressMessages(library(ggplot2))
+suppressMessages(library(gridExtra))
+suppressMessages(library(psych))
+```
 
-Let me know what you guys think. We can use this file to do the coding and document details for each other. At the end, when we are done, we put together a much cleaner document without all the details and code we left for each other.  
+#Critical Thinking Group 4 - HW1
 
+## Data Exploration
+
+Describe the size and the variables in the moneyball training data set. Consider that too much detail will cause a manager to lose interest while too little detail will make the manager consider that you aren't doing your job. Some suggestions are given below. Please do NOT treat this as a check list of things to do to complete the assignment. You should have your own thoughts on what to tell the boss. These are just ideas.  
+
+a. Mean / Standard Deviation / Median
+b. Bar Chart or Box Plot of the data
+c. Is the data correlated to the target variable (or to other variables?)
+d. Are any of the variables missing and need to be imputed "fixed"?
+
+```{r echo=FALSE}
+#read directly from the github
+moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+```
+
+There are a few variables that are missing data.  
+
+- TEAM_BATTING_SO (Strikeouts by batters): 102
+- TEAM_BASERUN_SB (Stolen bases): 131
+- TEAM_BASERUN_CS (Caught stealing): 772
+- TEAM_BATTING_HBP (Batters hit by pitch): 2085
+- TEAM_PITCHING_SO (Strikeouts by pitchers): 102
+- TEAM_FIELDING_DP (Double Plays): 286
 
 ```{r}
-## load libraries ####
+summary(moneyballTraining)
+```
 
-library(RCurl)
-library(dplyr)
-library(ggplot2)
-library(gridExtra)
-library(psych)
+Some of the data might have outliers. There are a few histograms with long tails.
+```{r}
+hist(moneyballTraining$TARGET_WINS)
+hist(moneyballTraining$TEAM_BATTING_H)
+hist(moneyballTraining$TEAM_BATTING_2B)
+hist(moneyballTraining$TEAM_BATTING_3B)
+
+hist(moneyballTraining$TEAM_BATTING_HR)
+hist(moneyballTraining$TEAM_BATTING_BB)
+hist(moneyballTraining$TEAM_BATTING_HBP)
+hist(moneyballTraining$TEAM_BATTING_SO)
+
+hist(moneyballTraining$TEAM_BASERUN_SB)
+hist(moneyballTraining$TEAM_BASERUN_CS)
+hist(moneyballTraining$TEAM_FIELDING_E)
+hist(moneyballTraining$TEAM_FIELDING_DP)
+
+hist(moneyballTraining$TEAM_PITCHING_BB)
+hist(moneyballTraining$TEAM_PITCHING_H)
+hist(moneyballTraining$TEAM_PITCHING_HR)
+hist(moneyballTraining$TEAM_PITCHING_SO)
+
+```
+
+## DATA PREPARATION
+
+Describe how you have transformed the data by changing the original variables or creating new variables. If you did transform the data or create new variables, discuss why you did this. Here are some possible transformations.  
+
+a. Fix missing values (maybe with a Mean or Median value)
+b. Create flags to suggest if a variable was missing
+c. Transform data by putting it into buckets
+d. Mathematical transforms such as log or square root (or use Box-Cox)
+e. Combine variables (such as ratios or adding or multiplying) to create new variables
+
+```{r}
+# Do we imput the missing data? Or drop records
+
+```
+
+## BUILD MODELS
+
+Using the training data set, build at least three different multiple linear regression models, using different variables (or the same variables with different transformations). Since we have not yet covered automated variable selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.  
+
+Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it would be reasonably expected that such a team would win more games. However, if the coefficient is negative (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model even though it is counter intuitive? Why? The boss needs to know.
+
+```{r}
+
+```
+
+## SELECT MODELS
+
+Decide on the criteria for selecting the best multiple linear regression model. Will you select a model with slightly worse performance if it makes more sense or is more parsimonious? Discuss why you selected your model.  
+
+For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to explain how you can make inferences from the model, discuss multi-collinearity issues (if any), and discuss other relevant model output. Using the training data set, evaluate the multiple linear regression model based on (a) mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.
+
+```{r}
+
 ```
 
 Read in the file to do Exploratory Data Analysis
@@ -67,9 +148,10 @@ moneyballtrain.URL <- getURL("https://raw.githubusercontent.com/Nguyver/DATA621-
 moneyballTraining <- read.csv(text = moneyballtrain.URL,header = TRUE, stringsAsFactors = FALSE)
 names(moneyballTraining)
 
-
-
 ```
+
+Hey Suman, Can you verify this section is correct. There seems to be some merging issues. I know you cleaned up the merge but looks like it might have been reintroduced.
+
 <<<<<<< HEAD
 
 Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
@@ -90,37 +172,38 @@ getStandardDev <- function(moneyballTraining)
   
   # transformed the y, due to high variances.
   barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
-  +mtext("Predictors", side=1, line = 8.5, las=1)
-  return(stdDev)
+  mtext("Predictors", side=1, line = 8.5, las=1)
+  return(stdDevs)
 }
 
 
-=======
-
-Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
-```{r}
-
-summary(moneyballTraining[3:17])
-
-dev.off()
-
-#Visualize the Standard deviations in all the independent variables -Suman.
-#--------------------------------------------------------------------------
-getStandardDev <- function(moneyballTraining)
-{
-  stdDevs <- SD(moneyballTraining[3:17])
-  stdDevs[order(stdDevs, decreasing = T)]
-  
-  par(mai=c(3,1.2,1,1))
-  
-  # transformed the y, due to high variances.
-  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
-  +mtext("Predictors", side=1, line = 8.5, las=1)
-  return(stdDev)
-}
-
-
->>>>>>> origin/master
+# =======
+# 
+# Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
+# 
+# ```{r}
+# 
+# summary(moneyballTraining[3:17])
+# 
+# dev.off()
+# 
+# #Visualize the Standard deviations in all the independent variables -Suman.
+# #--------------------------------------------------------------------------
+# getStandardDev <- function(moneyballTraining)
+# {
+#   stdDevs <- SD(moneyballTraining[3:17])
+#   stdDevs[order(stdDevs, decreasing = T)]
+#   
+#   par(mai=c(3,1.2,1,1))
+#   
+#   # transformed the y, due to high variances.
+#   barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
+#   +mtext("Predictors", side=1, line = 8.5, las=1)
+#   return(stdDev)
+# }
+# 
+# 
+# >>>>>>> origin/master
 getStandardDev(moneyballTraining)
 #--------------------------------------------------------------------------
 
@@ -160,7 +243,7 @@ for (response in c("TEAM_BATTING_H" ,  "TEAM_BATTING_2B",  "TEAM_BATTING_3B" ,
   "TEAM_BATTING_HR" , "TEAM_BATTING_BB",  "TEAM_BATTING_SO",  "TEAM_BASERUN_SB" , "TEAM_BASERUN_CS", 
  "TEAM_BATTING_HBP","TEAM_PITCHING_H",  "TEAM_PITCHING_HR", "TEAM_PITCHING_BB", "TEAM_PITCHING_SO",
 "TEAM_FIELDING_E" , "TEAM_FIELDING_DP"))
-+ boxplot(moneyballTraining[, response] ~ TARGET_WINS, data=moneyballTraining, ylab=response)
+ boxplot(moneyballTraining[, response] ~ TARGET_WINS, data=moneyballTraining, ylab=response)
 dev.off()
 ```
 
