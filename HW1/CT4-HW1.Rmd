@@ -70,6 +70,7 @@ names(moneyballTraining)
 
 
 ```
+<<<<<<< HEAD
 
 Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
@@ -94,6 +95,32 @@ getStandardDev <- function(moneyballTraining)
 }
 
 
+=======
+
+Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
+```{r}
+
+summary(moneyballTraining[3:17])
+
+dev.off()
+
+#Visualize the Standard deviations in all the independent variables -Suman.
+#--------------------------------------------------------------------------
+getStandardDev <- function(moneyballTraining)
+{
+  stdDevs <- SD(moneyballTraining[3:17])
+  stdDevs[order(stdDevs, decreasing = T)]
+  
+  par(mai=c(3,1.2,1,1))
+  
+  # transformed the y, due to high variances.
+  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
+  +mtext("Predictors", side=1, line = 8.5, las=1)
+  return(stdDev)
+}
+
+
+>>>>>>> origin/master
 getStandardDev(moneyballTraining)
 #--------------------------------------------------------------------------
 
