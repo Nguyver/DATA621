@@ -23,7 +23,6 @@ library(ggplot2)
 library(gridExtra)
 library(psych)
 library(reshape)
-library(lattice)
 library(car)
 library(recommenderlab)
 ```
@@ -77,88 +76,64 @@ names(moneyballTraining)
 
 Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
-
 summary(moneyballTraining[3:17])
 
-dev.off()
-
-#Visualize the Standard deviations in all the independent variables -Suman.
-#--------------------------------------------------------------------------
 getStandardDev <- function(moneyballTraining)
 {
   stdDevs <- SD(moneyballTraining[3:17])
-  stdDevs[order(stdDevs, decreasing = T)]
-  
   par(mai=c(3,1.2,1,1))
-  
+
   # transformed the y, due to high variances.
-  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
-  +mtext("Predictors", side=1, line = 8.5, las=1)
-  return(stdDev)
-}
-
-
-summary(moneyballTraining[3:17])
-
-dev.off()
-
-#Visualize the Standard deviations in all the independent variables -Suman.
-#--------------------------------------------------------------------------
-getStandardDev <- function(moneyballTraining)
-{
-  stdDevs <- SD(moneyballTraining[3:17])
-  stdDevs[order(stdDevs, decreasing = T)]
+  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8) 
   
-  par(mai=c(3,1.2,1,1))
-  
-  # transformed the y, due to high variances.
-  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
-  +mtext("Predictors", side=1, line = 8.5, las=1)
-  return(stdDev)
+  return(stdDevs)
 }
-
 
 getStandardDev(moneyballTraining)
-
 
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballTraining)){
   moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
 }
 
+#Standard Deviation - after
 #After imputation , verify the standard deviation again.
 getStandardDev(moneyballTraining)
 ```
 
 Finding Outliers using boxplot
 ```{r}
+meltMoneyBallTraining <- melt(moneyballTraining[3:17])
+ggplot(meltMoneyBallTraining, aes(factor(variable), value)) + geom_boxplot() + facet_wrap(~variable, scale="free")
+
+
 #Box plot to find outliers
-par(mfrow=c(3,5))
-boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
-boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
-boxplot(moneyballTraining$TEAM_BATTING_3B, main="TEAM_BATTING_3B")
-boxplot(moneyballTraining$TEAM_BATTING_HR, main="TEAM_BATTING_HR")
-boxplot(moneyballTraining$TEAM_BATTING_BB, main="TEAM_BATTING_BB")
-
-boxplot(moneyballTraining$TEAM_BATTING_SO, main="TEAM_BATTING_SO")
-boxplot(moneyballTraining$TEAM_BASERUN_SB, main="TEAM_BASERUN_SB")
-boxplot(moneyballTraining$TEAM_BASERUN_CS, main="TEAM_BASERUN_CS")
-boxplot(moneyballTraining$TEAM_BATTING_HBP, main="TEAM_BATTING_HBP")
-boxplot(moneyballTraining$TEAM_PITCHING_H, main="TEAM_PITCHING_H")
-
-boxplot(moneyballTraining$TEAM_PITCHING_HR, main="TEAM_PITCHING_HR")
-boxplot(moneyballTraining$TEAM_PITCHING_BB, main="TEAM_PITCHING_BB")
-boxplot(moneyballTraining$TEAM_PITCHING_SO, main="TEAM_PITCHING_SO")
-boxplot(moneyballTraining$TEAM_FIELDING_E, main="TEAM_FIELDING_E")
-boxplot(moneyballTraining$TEAM_FIELDING_DP, main="TEAM_FIELDING_DP")
-
-par(mfrow=c(3, 5))
-for (response in c("TEAM_BATTING_H" ,  "TEAM_BATTING_2B",  "TEAM_BATTING_3B" ,
-  "TEAM_BATTING_HR" , "TEAM_BATTING_BB",  "TEAM_BATTING_SO",  "TEAM_BASERUN_SB" , "TEAM_BASERUN_CS", 
- "TEAM_BATTING_HBP","TEAM_PITCHING_H",  "TEAM_PITCHING_HR", "TEAM_PITCHING_BB", "TEAM_PITCHING_SO",
-"TEAM_FIELDING_E" , "TEAM_FIELDING_DP"))
-+ boxplot(moneyballTraining[, response] ~ TARGET_WINS, data=moneyballTraining, ylab=response)
-dev.off()
+# par(mfrow=c(3,5))
+# boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
+# boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
+# boxplot(moneyballTraining$TEAM_BATTING_3B, main="TEAM_BATTING_3B")
+# boxplot(moneyballTraining$TEAM_BATTING_HR, main="TEAM_BATTING_HR")
+# boxplot(moneyballTraining$TEAM_BATTING_BB, main="TEAM_BATTING_BB")
+# 
+# boxplot(moneyballTraining$TEAM_BATTING_SO, main="TEAM_BATTING_SO")
+# boxplot(moneyballTraining$TEAM_BASERUN_SB, main="TEAM_BASERUN_SB")
+# boxplot(moneyballTraining$TEAM_BASERUN_CS, main="TEAM_BASERUN_CS")
+# boxplot(moneyballTraining$TEAM_BATTING_HBP, main="TEAM_BATTING_HBP")
+# boxplot(moneyballTraining$TEAM_PITCHING_H, main="TEAM_PITCHING_H")
+# 
+# boxplot(moneyballTraining$TEAM_PITCHING_HR, main="TEAM_PITCHING_HR")
+# boxplot(moneyballTraining$TEAM_PITCHING_BB, main="TEAM_PITCHING_BB")
+# boxplot(moneyballTraining$TEAM_PITCHING_SO, main="TEAM_PITCHING_SO")
+# boxplot(moneyballTraining$TEAM_FIELDING_E, main="TEAM_FIELDING_E")
+# boxplot(moneyballTraining$TEAM_FIELDING_DP, main="TEAM_FIELDING_DP")
+# 
+# par(mfrow=c(3, 5))
+# for (response in c("TEAM_BATTING_H" ,  "TEAM_BATTING_2B",  "TEAM_BATTING_3B" ,
+#   "TEAM_BATTING_HR" , "TEAM_BATTING_BB",  "TEAM_BATTING_SO",  "TEAM_BASERUN_SB" , "TEAM_BASERUN_CS", 
+#  "TEAM_BATTING_HBP","TEAM_PITCHING_H",  "TEAM_PITCHING_HR", "TEAM_PITCHING_BB", "TEAM_PITCHING_SO",
+# "TEAM_FIELDING_E" , "TEAM_FIELDING_DP"))
+# + boxplot(moneyballTraining[, response] ~ TARGET_WINS, data=moneyballTraining, ylab=response)
+#dev.off()
 ```
 
 
@@ -420,7 +395,7 @@ residuals <- moneyballTest$TARGET_WINS - predicted.wins
 #lets put in ggplot
 rmse.df <- data.frame(actual = moneyballTest$TARGET_WINS, predicted = predicted.wins)
 
-dev.off()
+#dev.off()
 ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point()
 
 #hmmm. there appears to be few outliers
