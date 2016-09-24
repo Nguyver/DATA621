@@ -22,6 +22,10 @@ library(dplyr)
 library(ggplot2)
 library(gridExtra)
 library(psych)
+library(reshape)
+library(lattice)
+library(car)
+library(recommenderlab)
 ```
 
 Read in the file to do Exploratory Data Analysis
@@ -70,7 +74,6 @@ names(moneyballTraining)
 
 
 ```
-<<<<<<< HEAD
 
 Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
@@ -95,11 +98,6 @@ getStandardDev <- function(moneyballTraining)
 }
 
 
-=======
-
-Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
-```{r}
-
 summary(moneyballTraining[3:17])
 
 dev.off()
@@ -120,9 +118,8 @@ getStandardDev <- function(moneyballTraining)
 }
 
 
->>>>>>> origin/master
 getStandardDev(moneyballTraining)
-#--------------------------------------------------------------------------
+
 
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballTraining)){
@@ -348,4 +345,132 @@ TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E +
 
 ##Backward elimination and Stepwise Regression Model has the best Adjusted R-squared value.
 ###So we would like select Backward elimination model  
+
+
+
+##Adding the below simple regression analysis, we can remove if it does not make sense in final version. 
+##-Suman
+
+#3.5 Regression Analysis by removing high vif, and high p value predictors
+```{r}
+glimpse(moneyballTraining)
+
+#Lets first break the training set into training and test sets.
+set.seed(11)
+samples <- sample(1:nrow(moneyballTraining), 0.75*nrow(moneyballTraining))
+moneyballTraining <- moneyballTraining[samples,]
+moneyballTest <- moneyballTraining[-samples,]
+glimpse(moneyballTraining)
+glimpse(moneyballTest)
+
+#Let's consider ALL the variables ( except INDEX).
+fit1 <- lm(TARGET_WINS ~ . -INDEX, data=moneyballTraining)
+summary(fit1)
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+#got high vif (>5)
+vifFit1 <- vif(fit1)
+vifFit1
+
+#sort by descending
+sort(vifFit1, decreasing = T)
+
+#These has got high vif value [ highly correlated results in multicolinearity ]
+#TEAM_BATTING_HR TEAM_PITCHING_HR  TEAM_BATTING_BB TEAM_PITCHING_BB 
+#36.901942        29.744427         6.815457         6.363007
+
+fit2 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB, data=moneyballTraining)
+
+#Lets now review the summary of this model, and look at the p-values now. Lets get rid of the
+#variables with p-value > 0.05
+summary(fit2)
+
+# These are all got p value > 0.05, lets drop these in our next model
+#TEAM_BATTING_3B   3.188e-02  1.879e-02   1.697  0.089971 
+#TEAM_BATTING_SO   5.331e-05  2.521e-03   0.021  0.983129
+#TEAM_BATTING_HBP  1.027e-01  8.655e-02   1.187  0.235449  
+#TEAM_BATTING_2B  -1.584e-02  1.063e-02  -1.490  0.136465 
+
+fit3 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B, data=moneyballTraining)
+
+summary(fit3)
+
+#TEAM_BATTING_SO  -0.0016982  0.0023009  -0.738 0.4606 
+#TEAM_BATTING_HBP  0.1004744  0.0865918   1.160 0.2461
+#TEAM_PITCHING_H  -0.0004844  0.0004140  -1.170 0.2422
+#TEAM_BATTING_2B  -0.0174378  0.0105980  -1.645 0.1001
+
+#Lets remove TEAM_BATTING_SO, TEAM_BATTING_HBP,TEAM_PITCHING_H,TEAM_BATTING_2B
+fit4 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B -TEAM_BATTING_SO -TEAM_BATTING_HBP -TEAM_PITCHING_H -TEAM_BATTING_2B, data=moneyballTraining)
+
+summary(fit4)
+
+```
+
+#3.6 RMSE - Root Mean Sqared Error (verification with test data)
+```{r}
+#Lets take our model, and apply it on the test dataset.
+predicted.wins <- predict(fit4, newdata = moneyballTest)
+
+#Lets calculate the RMSE
+residuals <- moneyballTest$TARGET_WINS - predicted.wins
+(rmse_test <- sqrt(mean(residuals^2)))
+#high rmse [13.3875]
+
+#lets put in ggplot
+rmse.df <- data.frame(actual = moneyballTest$TARGET_WINS, predicted = predicted.wins)
+
+dev.off()
+ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point()
+
+#hmmm. there appears to be few outliers
+```
+
+#3.7 Diagnostic plots, check for linearity, normality is justified for residuals ...
+```{r}
+#Check if linearity in residuals violated
+plot(fit4, which=1)
+
+#Observation: the red line is about flat, which indicates the linearity in residuals is good.
+
+
+#Is residual variance is constant [ assumption of homo scedasticity is fine or not ]
+plot(fit4, which=3)
+
+
+#For normality of residuals
+plot(fit4, which=2) #if most of the resids are on the straight line we are good to go.
+
+#Lets check normality via ggplot for specific data element
+# say, TEAM_BATTING_HR
+d = data.frame(x=fit4$residuals, y = moneyballTraining$TEAM_BATTING_HR)
+ggplot(d, aes(x,y)) + geom_point() + geom_smooth()
+
+ggplot(d, aes(x)) + geom_histogram()
+
+ggplot(d, aes(x)) + geom_density(color="red") + stat_function(fun=dnorm, args=list(mean=mean(d$x), sd=sd(d$x)), color="dark green") #residuals are normal.
+```
+
+#3.8 Evaluation
+```{r}
+moneyballEvaluation <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+#check how many na's for each column
+apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
+
+#Replacing Missing Values In dataset with column mean
+for(i in 1:ncol(moneyballEvaluation)){
+  moneyballEvaluation[is.na(moneyballEvaluation[,i]), i] <- mean(moneyballEvaluation[,i], na.rm = TRUE)
+}
+
+apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
+
+eval.wins <- predict(fit4, newdata = moneyballEvaluation)
+
+head(eval.wins)
+
+#....what else ?
+
+```
+
 
