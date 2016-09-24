@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Let me know what you guys think. We can use this file to do the coding and document details for each other. At the end, when we are done, we put together a much cleaner document without all the details and code we left for each other.  
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 ## load libraries ####
 
 library(RCurl)
@@ -23,6 +23,8 @@ library(ggplot2)
 library(gridExtra)
 library(psych)
 library(reshape)
+library(MASS)
+#Companion to Applied Regression
 library(car)
 library(recommenderlab)
 ```
@@ -33,25 +35,6 @@ Read in the file to do Exploratory Data Analysis
 #read directly from the github
 moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
-head(moneyballTraining)
-names(moneyballTraining)
-summary(moneyballTraining)
-
-#Cleaning ?
-
-
-#Data Exploration:
-
-# 'TARGET_WINS' is the Dependent/Response variable here. And below are the independent (/exploratory) variables.
-# Indpendent Variables: TEAM_BATTING_H TEAM_BATTING_2B TEAM_BATTING_3B  TEAM_BATTING_HR  TEAM_BATTING_BB TEAM_BATTING_SO  TEAM_BASERUN_SB TEAM_BASERUN_CS
-
-# Let us try to explore each of the exploratory variable's distribution [histogram, boxplot - to understand the distribution and identify outliers etc.]
-# Let us also explore how each of the independent variable related to the response variable ( using scatter plot )
-# what else ?
-
-#
-library(ggplot2)
-
 # Explore independent variable TEAM_BATTING_H
 ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + ggtitle(paste("Histogram  - " , "TEAM_BATTING_H")) 
 
@@ -59,23 +42,14 @@ qplot(y=moneyballTraining$TEAM_BATTING_H, x= 1, geom = "boxplot")
 
 ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
 
-```
-
-
-sreejaya
-```{r}
-##Load Data
-
-moneyballtrain.URL <- getURL("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv")
-moneyballTraining <- read.csv(text = moneyballtrain.URL,header = TRUE, stringsAsFactors = FALSE)
-names(moneyballTraining)
-
-
+#similarly other independent variables Vs target wins
 
 ```
 
 Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
+glimpse(moneyballTraining)
+
 summary(moneyballTraining[3:17])
 
 getStandardDev <- function(moneyballTraining)
@@ -105,56 +79,17 @@ Finding Outliers using boxplot
 ```{r}
 meltMoneyBallTraining <- melt(moneyballTraining[3:17])
 ggplot(meltMoneyBallTraining, aes(factor(variable), value)) + geom_boxplot() + facet_wrap(~variable, scale="free")
-
-
-#Box plot to find outliers
-# par(mfrow=c(3,5))
-# boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
-# boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
-# boxplot(moneyballTraining$TEAM_BATTING_3B, main="TEAM_BATTING_3B")
-# boxplot(moneyballTraining$TEAM_BATTING_HR, main="TEAM_BATTING_HR")
-# boxplot(moneyballTraining$TEAM_BATTING_BB, main="TEAM_BATTING_BB")
-# 
-# boxplot(moneyballTraining$TEAM_BATTING_SO, main="TEAM_BATTING_SO")
-# boxplot(moneyballTraining$TEAM_BASERUN_SB, main="TEAM_BASERUN_SB")
-# boxplot(moneyballTraining$TEAM_BASERUN_CS, main="TEAM_BASERUN_CS")
-# boxplot(moneyballTraining$TEAM_BATTING_HBP, main="TEAM_BATTING_HBP")
-# boxplot(moneyballTraining$TEAM_PITCHING_H, main="TEAM_PITCHING_H")
-# 
-# boxplot(moneyballTraining$TEAM_PITCHING_HR, main="TEAM_PITCHING_HR")
-# boxplot(moneyballTraining$TEAM_PITCHING_BB, main="TEAM_PITCHING_BB")
-# boxplot(moneyballTraining$TEAM_PITCHING_SO, main="TEAM_PITCHING_SO")
-# boxplot(moneyballTraining$TEAM_FIELDING_E, main="TEAM_FIELDING_E")
-# boxplot(moneyballTraining$TEAM_FIELDING_DP, main="TEAM_FIELDING_DP")
-# 
-# par(mfrow=c(3, 5))
-# for (response in c("TEAM_BATTING_H" ,  "TEAM_BATTING_2B",  "TEAM_BATTING_3B" ,
-#   "TEAM_BATTING_HR" , "TEAM_BATTING_BB",  "TEAM_BATTING_SO",  "TEAM_BASERUN_SB" , "TEAM_BASERUN_CS", 
-#  "TEAM_BATTING_HBP","TEAM_PITCHING_H",  "TEAM_PITCHING_HR", "TEAM_PITCHING_BB", "TEAM_PITCHING_SO",
-# "TEAM_FIELDING_E" , "TEAM_FIELDING_DP"))
-# + boxplot(moneyballTraining[, response] ~ TARGET_WINS, data=moneyballTraining, ylab=response)
-#dev.off()
 ```
 
 
 Removing Outliers
 ```{r}
-#
-# comparing median to mean. Usually median and mean should be the same. But if median is far lower than the mean it could suggest that there are outliers.
-
-#from the BoxPlot we see otliers for 
-
-#TEAM_BATTING_3B, TEAM_BASERUN_SB,TEAM_BASERUN_CS, TEAM_PITCHING_H, TEAM_PITCHING_BB, TEAM_PITCHING_#SO, TEAM_FIELDING_E
-# since TEAM_BASERUN_CS and TEAM_PITCHING_SO have same mean and median we can assume that they dont have ant outliers.
-
-##?? do we need to remove zero's? Max values seems reasonable or not??
 ```
 
 find correlation of Response variable with predictor variables
 ```{r}
 
 corData <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
-library(reshape)
 t(corData[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
 moneyballTraining.cor <- melt(t(corData[2,c(2:17)])) # convert the wide format to long form for ease of read
 moneyballTraining.cor
@@ -167,73 +102,6 @@ moneyballTraining.cor
 
 
 ```
-
-Predictor Variables  Vs Response variable(Target win) 
-Correlation Visualization
-```{r}
- 
-#plt_TEAM_BATTING_H<-ggplot(data = moneyballTraining,aes(x=TEAM_BATTING_H,y=TARGET_WINS)) + geom_point() + #geom_smooth(method=glm)  + ggtitle(paste("Plot  - " , "TEAM_BATTING_H")) 
-
-plt_TEAM_BATTING_H <- ggplot(moneyballTraining, aes(TEAM_BATTING_H,TARGET_WINS))
-plt_TEAM_BATTING_H <-plt_TEAM_BATTING_H + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_H"))
-
-plt_TEAM_BATTING_2B <- ggplot(moneyballTraining, aes(TEAM_BATTING_2B,TARGET_WINS))
-plt_TEAM_BATTING_2B <-plt_TEAM_BATTING_2B + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_2B"))
-
-plt_TEAM_BATTING_3B <- ggplot(moneyballTraining, aes(TEAM_BATTING_3B,TARGET_WINS))
-plt_TEAM_BATTING_3B <-plt_TEAM_BATTING_3B + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_3B"))
-
-plt_TEAM_BATTING_HR <- ggplot(moneyballTraining, aes(TEAM_BATTING_HR,TARGET_WINS))
-plt_TEAM_BATTING_HR <-plt_TEAM_BATTING_HR + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_HR"))
-
-plt_TEAM_BATTING_BB <- ggplot(moneyballTraining, aes(TEAM_BATTING_BB,TARGET_WINS))
-plt_TEAM_BATTING_BB <-plt_TEAM_BATTING_BB + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_BB"))
-
-plt_TEAM_BATTING_SO <- ggplot(moneyballTraining, aes(TEAM_BATTING_SO,TARGET_WINS))
-plt_TEAM_BATTING_SO <-plt_TEAM_BATTING_SO + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_SO"))
-
-plt_TEAM_BASERUN_SB <- ggplot(moneyballTraining, aes(TEAM_BASERUN_SB,TARGET_WINS))
-plt_TEAM_BASERUN_SB <-plt_TEAM_BASERUN_SB + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BASERUN_SB"))
-
-
-plt_TEAM_BASERUN_CS <- ggplot(moneyballTraining, aes(TEAM_BASERUN_CS,TARGET_WINS))
-plt_TEAM_BASERUN_CS <-plt_TEAM_BASERUN_CS + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BASERUN_CS"))
-
-plt_TEAM_BATTING_HBP <- ggplot(moneyballTraining, aes(TEAM_BATTING_HBP,TARGET_WINS))
-plt_TEAM_BATTING_HBP <-plt_TEAM_BATTING_HBP + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_BATTING_HBP"))
-
-plt_TEAM_PITCHING_H <- ggplot(moneyballTraining, aes(TEAM_PITCHING_H,TARGET_WINS))
-plt_TEAM_PITCHING_H <-plt_TEAM_PITCHING_H + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_H"))
-
-plt_TEAM_PITCHING_HR <- ggplot(moneyballTraining, aes(TEAM_PITCHING_HR,TARGET_WINS))
-plt_TEAM_PITCHING_HR <-plt_TEAM_PITCHING_HR + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_HR"))
-
-plt_TEAM_PITCHING_BB <- ggplot(moneyballTraining, aes(TEAM_PITCHING_BB,TARGET_WINS))
-plt_TEAM_PITCHING_BB <-plt_TEAM_PITCHING_BB + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_BB"))
-
-plt_TEAM_PITCHING_SO <- ggplot(moneyballTraining, aes(TEAM_PITCHING_SO,TARGET_WINS))
-plt_TEAM_PITCHING_SO <-plt_TEAM_PITCHING_SO + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_PITCHING_SO"))
-
-plt_TEAM_FIELDING_E <- ggplot(moneyballTraining, aes(TEAM_FIELDING_E,TARGET_WINS))
-plt_TEAM_FIELDING_E <-plt_TEAM_FIELDING_E + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_FIELDING_E"))
-
-plt_TEAM_FIELDING_DP <- ggplot(moneyballTraining, aes(TEAM_FIELDING_DP,TARGET_WINS))
-plt_TEAM_FIELDING_DP <-plt_TEAM_FIELDING_DP + stat_smooth(method='gam') + geom_point()+ ggtitle(paste("Plot  - " , "TEAM_FIELDING_DP"))
-
-#All Predictor Variables
-grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_TEAM_BATTING_HR, plt_TEAM_BATTING_BB,plt_TEAM_BATTING_SO, plt_TEAM_BASERUN_SB, plt_TEAM_BASERUN_CS, plt_TEAM_BATTING_HBP, plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR, plt_TEAM_PITCHING_SO, plt_TEAM_FIELDING_E, plt_TEAM_FIELDING_DP, plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
-
-#positive impact on wins
-
-grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_TEAM_BATTING_HR, plt_TEAM_BATTING_BB, plt_TEAM_BASERUN_SB,  plt_TEAM_BATTING_HBP,   plt_TEAM_PITCHING_SO,  plt_TEAM_FIELDING_DP,   ncol = 3, nrow = 5)
-
-#negative impact on wins
-grid.arrange(plt_TEAM_BATTING_SO,  plt_TEAM_BASERUN_CS,  plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR,  plt_TEAM_FIELDING_E,  plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
-
-
-
-```
-
 
 ## 3.Build  Models
 To fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS' &  'TEAM BATTING HBP' as they have very low correlation with Wins:
@@ -264,7 +132,6 @@ summary(team.mod2)
 
 #3.2 Stepwise Regression
 ```{r}
-library(MASS)
 fit <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
  TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_BATTING_HBP + 
 TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
