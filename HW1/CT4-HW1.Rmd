@@ -28,6 +28,7 @@ b. Bar Chart or Box Plot of the data
 c. Is the data correlated to the target variable (or to other variables?)
 d. Are any of the variables missing and need to be imputed "fixed"?
 
+
 ```{r echo=FALSE}
 #read directly from the github
 moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
@@ -71,89 +72,31 @@ hist(moneyballTraining$TEAM_PITCHING_H)
 hist(moneyballTraining$TEAM_PITCHING_SO)
 ```
 
-## DATA PREPARATION
-
-Describe how you have transformed the data by changing the original variables or creating new variables. If you did transform the data or create new variables, discuss why you did this. Here are some possible transformations.  
-
-a. Fix missing values (maybe with a Mean or Median value)
-b. Create flags to suggest if a variable was missing
-c. Transform data by putting it into buckets
-d. Mathematical transforms such as log or square root (or use Box-Cox)
-e. Combine variables (such as ratios or adding or multiplying) to create new variables
-
 ```{r}
-# Do we imput the missing data? Or drop records
+# 'TARGET_WINS' is the Dependent/Response variable here. And below are the 
+# independent (/exploratory) variables.
+# Indpendent Variables: TEAM_BATTING_H TEAM_BATTING_2B TEAM_BATTING_3B  
+# TEAM_BATTING_HR  TEAM_BATTING_BB TEAM_BATTING_SO  TEAM_BASERUN_SB TEAM_BASERUN_CS
 
-```
-
-## BUILD MODELS
-
-Using the training data set, build at least three different multiple linear regression models, using different variables (or the same variables with different transformations). Since we have not yet covered automated variable selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.  
-
-Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it would be reasonably expected that such a team would win more games. However, if the coefficient is negative (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model even though it is counter intuitive? Why? The boss needs to know.
-
-```{r}
-
-```
-
-## SELECT MODELS
-
-Decide on the criteria for selecting the best multiple linear regression model. Will you select a model with slightly worse performance if it makes more sense or is more parsimonious? Discuss why you selected your model.  
-
-For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to explain how you can make inferences from the model, discuss multi-collinearity issues (if any), and discuss other relevant model output. Using the training data set, evaluate the multiple linear regression model based on (a) mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.
-
-```{r}
-
-```
-
-Read in the file to do Exploratory Data Analysis
-
-```{r}
-#read directly from the github
-moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
-
-head(moneyballTraining)
-names(moneyballTraining)
-summary(moneyballTraining)
-
-#Cleaning ?
-
-
-#Data Exploration:
-
-# 'TARGET_WINS' is the Dependent/Response variable here. And below are the independent (/exploratory) variables.
-# Indpendent Variables: TEAM_BATTING_H TEAM_BATTING_2B TEAM_BATTING_3B  TEAM_BATTING_HR  TEAM_BATTING_BB TEAM_BATTING_SO  TEAM_BASERUN_SB TEAM_BASERUN_CS
-
-# Let us try to explore each of the exploratory variable's distribution [histogram, boxplot - to understand the distribution and identify outliers etc.]
-# Let us also explore how each of the independent variable related to the response variable ( using scatter plot )
+# Let us try to explore each of the exploratory variable's distribution 
+# [histogram, boxplot - to understand the distribution and identify outliers etc.]
+# Let us also explore how each of the independent variable related to the 
+# response variable ( using scatter plot )
 # what else ?
 
-#
-#library(ggplot2)
 
 # Explore independent variable TEAM_BATTING_H
-ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + ggtitle(paste("Histogram  - " , "TEAM_BATTING_H")) 
+ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + 
+  ggtitle(paste("Histogram  - " , "TEAM_BATTING_H")) 
 
 qplot(y=moneyballTraining$TEAM_BATTING_H, x= 1, geom = "boxplot")
 
-ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
-
+ggplot(data = moneyballTraining) + 
+  geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + 
+  ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
 ```
 
-
-sreejaya
-```{r}
-##Load Data
-
-moneyballtrain.URL <- getURL("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv")
-moneyballTraining <- read.csv(text = moneyballtrain.URL,header = TRUE, stringsAsFactors = FALSE)
-names(moneyballTraining)
-
-```
-
-Hey Suman, Can you verify this section is correct. There seems to be some merging issues. I know you cleaned up the merge but looks like it might have been reintroduced.
-
-<<<<<<< HEAD
+Hey Suman, Can you verify this section is correct. There seems to be some merging issues. I know you cleaned up the merge but looks like it might have been reintroduced. I had to comment out some stuff but check to make sure I didn't remove stuff you wanted to keep
 
 Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
@@ -172,12 +115,13 @@ getStandardDev <- function(moneyballTraining)
   par(mai=c(3,1.2,1,1))
   
   # transformed the y, due to high variances.
-  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
+  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, 
+          main="Std Dev of Predictors", xlab="", ylab="Log(SD)", 
+          cex.axis = 0.8, cex.names=0.8)
+  
   mtext("Predictors", side=1, line = 8.5, las=1)
   return(stdDevs)
 }
-
-
 # =======
 # 
 # Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
@@ -248,16 +192,29 @@ for (response in c("TEAM_BATTING_H" ,  "TEAM_BATTING_2B",  "TEAM_BATTING_3B" ,
 dev.off()
 ```
 
+## DATA PREPARATION
+
+Describe how you have transformed the data by changing the original variables or creating new variables. If you did transform the data or create new variables, discuss why you did this. Here are some possible transformations.  
+
+a. Fix missing values (maybe with a Mean or Median value)
+b. Create flags to suggest if a variable was missing
+c. Transform data by putting it into buckets
+d. Mathematical transforms such as log or square root (or use Box-Cox)
+e. Combine variables (such as ratios or adding or multiplying) to create new variables
+
+```{r}
+# Do we imput the missing data? Or drop records
+```
 
 Removing Outliers
 ```{r}
 #
 # comparing median to mean. Usually median and mean should be the same. But if median is far lower than the mean it could suggest that there are outliers.
 
-#from the BoxPlot we see otliers for 
+#from the BoxPlot we see outliers for 
 
 #TEAM_BATTING_3B, TEAM_BASERUN_SB,TEAM_BASERUN_CS, TEAM_PITCHING_H, TEAM_PITCHING_BB, TEAM_PITCHING_#SO, TEAM_FIELDING_E
-# since TEAM_BASERUN_CS and TEAM_PITCHING_SO have same mean and median we can assume that they dont have ant outliers.
+#since TEAM_BASERUN_CS and TEAM_PITCHING_SO have same mean and median we can assume that they dont have any outliers.
 
 ##?? do we need to remove zero's? Max values seems reasonable or not??
 ```
@@ -276,8 +233,6 @@ moneyballTraining.cor
 #TEAM_PITCHING_SO,TEAM_FIELDING_DP (but this should be positive)
 
 ## TEAM_BASERUN_CS, TEAM_BATTING_HBP have very low correlation with Total win. So we dont have to consider these variables in the MODEL
-
-
 ```
 
 Predictor Variables  Vs Response variable(Target win) 
@@ -341,11 +296,13 @@ grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_T
 
 #negative impact on wins
 grid.arrange(plt_TEAM_BATTING_SO,  plt_TEAM_BASERUN_CS,  plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR,  plt_TEAM_FIELDING_E,  plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
-
-
-
 ```
 
+## BUILD MODELS
+
+Using the training data set, build at least three different multiple linear regression models, using different variables (or the same variables with different transformations). Since we have not yet covered automated variable selection methods, you should select the variables manually (unless you previously learned Forward or Stepwise selection, etc.). Since you manually selected a variable for inclusion into the model or exclusion into the model, indicate why this was done.  
+
+Discuss the coefficients in the models, do they make sense? For example, if a team hits a lot of Home Runs, it would be reasonably expected that such a team would win more games. However, if the coefficient is negative (suggesting that the team would lose more games), then that needs to be discussed. Are you keeping the model even though it is counter intuitive? Why? The boss needs to know.
 
 ## 3.Build  Models
 To fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS' &  'TEAM BATTING HBP' as they have very low correlation with Wins:
@@ -433,3 +390,14 @@ TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E +
 ##Backward elimination and Stepwise Regression Model has the best Adjusted R-squared value.
 ###So we would like select Backward elimination model  
 
+
+
+## SELECT MODELS
+
+Decide on the criteria for selecting the best multiple linear regression model. Will you select a model with slightly worse performance if it makes more sense or is more parsimonious? Discuss why you selected your model.  
+
+For the multiple linear regression model, will you use a metric such as Adjusted R2, RMSE, etc.? Be sure to explain how you can make inferences from the model, discuss multi-collinearity issues (if any), and discuss other relevant model output. Using the training data set, evaluate the multiple linear regression model based on (a) mean squared error, (b) R2, (c) F-statistic, and (d) residual plots. Make predictions using the evaluation data set.
+
+```{r}
+
+```
