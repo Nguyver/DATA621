@@ -43,33 +43,22 @@ There are a few variables that are missing data.
 - TEAM_PITCHING_SO (Strikeouts by pitchers): 102
 - TEAM_FIELDING_DP (Double Plays): 286
 
-```{r}
+```{r echo=FALSE, eval=FALSE}
 head(moneyballTraining)
 names(moneyballTraining)
+```
+
+```{r}
 summary(moneyballTraining)
 ```
 
 Some of the data might have outliers. There are a few histograms with long tails.
 ```{r}
-#hist(moneyballTraining$TARGET_WINS)
-#hist(moneyballTraining$TEAM_BATTING_H)
-#hist(moneyballTraining$TEAM_BATTING_2B)
-#hist(moneyballTraining$TEAM_BATTING_3B)
-
-#hist(moneyballTraining$TEAM_BATTING_HR)
-#hist(moneyballTraining$TEAM_BATTING_BB)
-#hist(moneyballTraining$TEAM_BATTING_HBP)
-#hist(moneyballTraining$TEAM_BATTING_SO)
-
-hist(moneyballTraining$TEAM_BASERUN_SB)
-#hist(moneyballTraining$TEAM_BASERUN_CS)
-hist(moneyballTraining$TEAM_FIELDING_E)
-#hist(moneyballTraining$TEAM_FIELDING_DP)
-
-hist(moneyballTraining$TEAM_PITCHING_BB)
-hist(moneyballTraining$TEAM_PITCHING_H)
-#hist(moneyballTraining$TEAM_PITCHING_HR)
-hist(moneyballTraining$TEAM_PITCHING_SO)
+hist(moneyballTraining$TEAM_BASERUN_SB, main="Histogram of Stolen bases", xlab = "Stolen bases")
+hist(moneyballTraining$TEAM_FIELDING_E, main="Histogram of Errors", xlab="Errors")
+hist(moneyballTraining$TEAM_PITCHING_BB, main="Histogram of Walks allowed", xlab="Walks allowed")
+hist(moneyballTraining$TEAM_PITCHING_H, main="Histogram of Hits allowed", xlab="Hits allowed")
+hist(moneyballTraining$TEAM_PITCHING_SO, main="Strikeouts by pitchers", xlab="Strikeouts by pitchers")
 ```
 
 ```{r}
