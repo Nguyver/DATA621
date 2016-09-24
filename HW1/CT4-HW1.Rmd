@@ -347,5 +347,5 @@ TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E +
 
 
 ##Backward elimination and Stepwise Regression Model has the best Adjusted R-squared value.
-#So we would like select Backward elimination model  
+###So we would like select Backward elimination model  
 
