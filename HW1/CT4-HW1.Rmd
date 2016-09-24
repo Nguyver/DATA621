@@ -21,6 +21,7 @@ library(RCurl)
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(psych)
 ```
 
 Read in the file to do Exploratory Data Analysis
@@ -69,35 +70,45 @@ names(moneyballTraining)
 
 
 ```
-Finding Outliers using boxplot
+
+Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
 ```{r}
 
-###
-##boxplot(moneyballTraining[3:17], las = 2)
-
-#par(mfrow=c(5,3)) 
-#boxplot(moneyballTraining$TEAM_BATTING_HR)
-#hist(moneyballTraining$TEAM_BATTING_HR)
-
-#boxplot(moneyballTraining$TEAM_BASERUN_SB)
-#hist(moneyballTraining$TEAM_BASERUN_SB)
-
-#boxplot(moneyballTraining$TEAM_PITCHING_H)
-#hist(moneyballTraining$TEAM_PITCHING_H)
-###
-
 summary(moneyballTraining[3:17])
+
+dev.off()
+
+#Visualize the Standard deviations in all the independent variables -Suman.
+#--------------------------------------------------------------------------
+getStandardDev <- function(moneyballTraining)
+{
+  stdDevs <- SD(moneyballTraining[3:17])
+  stdDevs[order(stdDevs, decreasing = T)]
+  
+  par(mai=c(3,1.2,1,1))
+  
+  # transformed the y, due to high variances.
+  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8)
+  +mtext("Predictors", side=1, line = 8.5, las=1)
+  return(stdDev)
+}
+
+
+getStandardDev(moneyballTraining)
+#--------------------------------------------------------------------------
 
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballTraining)){
   moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
 }
 
+#After imputation , verify the standard deviation again.
+getStandardDev(moneyballTraining)
 ```
 
-
+Finding Outliers using boxplot
 ```{r}
-Box plot to find outliers
+#Box plot to find outliers
 par(mfrow=c(3,5))
 boxplot(moneyballTraining$TEAM_BATTING_H, main="TEAM_BATTING_H")
 boxplot(moneyballTraining$TEAM_BATTING_2B, main="TEAM_BATTING_2B")
@@ -116,6 +127,14 @@ boxplot(moneyballTraining$TEAM_PITCHING_BB, main="TEAM_PITCHING_BB")
 boxplot(moneyballTraining$TEAM_PITCHING_SO, main="TEAM_PITCHING_SO")
 boxplot(moneyballTraining$TEAM_FIELDING_E, main="TEAM_FIELDING_E")
 boxplot(moneyballTraining$TEAM_FIELDING_DP, main="TEAM_FIELDING_DP")
+
+par(mfrow=c(3, 5))
+for (response in c("TEAM_BATTING_H" ,  "TEAM_BATTING_2B",  "TEAM_BATTING_3B" ,
+  "TEAM_BATTING_HR" , "TEAM_BATTING_BB",  "TEAM_BATTING_SO",  "TEAM_BASERUN_SB" , "TEAM_BASERUN_CS", 
+ "TEAM_BATTING_HBP","TEAM_PITCHING_H",  "TEAM_PITCHING_HR", "TEAM_PITCHING_BB", "TEAM_PITCHING_SO",
+"TEAM_FIELDING_E" , "TEAM_FIELDING_DP"))
++ boxplot(moneyballTraining[, response] ~ TARGET_WINS, data=moneyballTraining, ylab=response)
+dev.off()
 ```
 
 
@@ -139,8 +158,11 @@ corData <-  round(cor(moneyballTraining), 3)                    # rounding makes
 library(reshape)
 t(corData[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
 moneyballTraining.cor <- melt(t(corData[2,c(2:17)])) # convert the wide format to long form for ease of read
+moneyballTraining.cor
 
-## TEAM_BATTING_SO,TEAM_PITCHING_H, TEAM_PITCHING_SO, TEAM_FIELDING_E, TEAM_FIELDING_DP have negative correlation with total win.
+## TEAM_BATTING_SO,TEAM_PITCHING_H,  TEAM_FIELDING_E  have negative correlation with total win. (which is expected)
+
+#TEAM_PITCHING_SO,TEAM_FIELDING_DP (but this should be positive)
 
 ## TEAM_BASERUN_CS, TEAM_BATTING_HBP have very low correlation with Total win. So we dont have to consider these variables in the MODEL
 
@@ -210,4 +232,93 @@ grid.arrange(plt_TEAM_BATTING_H, plt_TEAM_BATTING_2B, plt_TEAM_BATTING_3B, plt_T
 grid.arrange(plt_TEAM_BATTING_SO,  plt_TEAM_BASERUN_CS,  plt_TEAM_PITCHING_H, plt_TEAM_PITCHING_HR,  plt_TEAM_FIELDING_E,  plt_TEAM_PITCHING_BB,    ncol = 3, nrow = 5)
 
 
+
 ```
+
+
+## 3.Build  Models
+To fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS' &  'TEAM BATTING HBP' as they have very low correlation with Wins:
+We eliminate TEAM_BASERUN_CS
+
+# 3.1 Manual elimination
+```{r}
+#Full Model
+
+team.mod1 <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
+ TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_BATTING_HBP +
+TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
+TEAM_FIELDING_E + TEAM_FIELDING_DP,data =moneyballTraining)
+summary(team.mod1)
+
+ #R-squared:  0.3192,  Adjusted R-squared:  0.3147
+team.mod2 <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
+ TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + 
+TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
+TEAM_FIELDING_E + TEAM_FIELDING_DP,data =moneyballTraining)
+
+summary(team.mod2)
+#R-squared:  0.3188,  Adjusted R-squared:  0.3149  
+#Adjusted R-squared is higher than the original one.  
+
+
+```
+
+#3.2 Stepwise Regression
+```{r}
+library(MASS)
+fit <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
+ TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_BATTING_HBP + 
+TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
+TEAM_FIELDING_E + TEAM_FIELDING_DP,data =moneyballTraining)
+
+# Stepwise Regression
+step <- stepAIC(fit, direction="both")
+step$anova # display results
+summary(step)
+#R-squared:  0.3186,  Adjusted R-squared:  0.3153 
+
+par(mfrow=c(2, 2))
+plot(step,, main="Stepwise Regression")
+```
+#Model with Stepwise Regression
+TARGET_WINS = 23.67 + 0.048*TEAM_BATTING_H + -0.020*TEAM_BATTING_2B + 0.0625*TEAM_BATTING_3B + 
+    0.0698*TEAM_BATTING_HR + 0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 0.029*TEAM_BASERUN_SB + 
+    -0.0007*TEAM_PITCHING_H + 0.0029*TEAM_PITCHING_SO + -0.0206*TEAM_FIELDING_E + -0.121*TEAM_FIELDING_DP
+    
+#3.3 Backward elimination model   
+```{r}
+step.backward <- step(fit, direction="backward")
+step$anova # display results
+summary(step.backward)
+
+#R-squared:  0.3186,  Adjusted R-squared:  0.3153
+par(mfrow=c(2, 2))
+plot(step.backward, main="Backward elimination")
+```
+#Model with Backward elimination
+TARGET_WINS = 23.66 + 0.048*TEAM_BATTING_H + -0.020*TEAM_BATTING_2B + 
+    0.062*TEAM_BATTING_3B + 0.0698*TEAM_BATTING_HR + 0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 
+    0.029*TEAM_BASERUN_SB + -0.001*TEAM_PITCHING_H + 0.002*TEAM_PITCHING_SO + -0.021*TEAM_FIELDING_E + 
+    -0.121*TEAM_FIELDING_DP
+
+#3.4 forward Elimination
+```{r}
+forward.null <-lm(TARGET_WINS~1,data=moneyballTraining)
+forward.full <-lm(TARGET_WINS~.,data=moneyballTraining)
+step.forward<- step(forward.null, scope=list(lower=forward.null, upper=forward.full), direction="forward")
+
+summary(step.forward)
+# R-squared:  0.3188,  Adjusted R-squared:  0.3152
+par(mfrow=c(2, 2))
+plot(step.forward, main="Forward Elimination")
+```
+#Model with forward elimination
+TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E + 
+    0.029*TEAM_BASERUN_SB + -0.12*TEAM_FIELDING_DP + 0.015*TEAM_PITCHING_HR + 0.061*TEAM_BATTING_3B + 
+    0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 0.003*TEAM_PITCHING_SO + -0.0007*TEAM_PITCHING_H + 
+    0.054*TEAM_BATTING_HR + -0.02*TEAM_BATTING_2B
+
+
+##Backward elimination and Stepwise Regression Model has the best Adjusted R-squared value.
+#So we would like select Backward elimination model  
+
