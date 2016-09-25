@@ -7,11 +7,10 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-## load libraries ####
-
 library(RCurl)
 library(dplyr)
 library(ggplot2)
@@ -20,37 +19,46 @@ library(gridExtra)
 library(psych)
 library(reshape)
 library(MASS)
-#Companion to Applied Regression
 library(car)
 library(recommenderlab)
+library(knitr)
 ```
 
-## Data Exploration
+#Purpose  
 
-  The given moneyball dataset has got 2,276 observations and 17 variables. The below is the glimpse of the data elements along with their data types, and sample data.
-  
-```{r, warning=FALSE}
+The purpose of this experiment is to try to predict the amount of wins for a baseball team using the (modified) moneyball dataset. This dataset contains approximately 2200 observations with 17 variables. Each observation represents the performance of a professional baseball team from 1871 to 2006. The statistics have been adjusted to match the performance of a 162 game season.  
+
+Dataset:  
+[Moneyball Training Data](https://github.com/Nguyver/DATA621-HW/blob/master/HW1/moneyball-training-data.csv)  
+[Moneyball Evaluation Data](https://github.com/Nguyver/DATA621-HW/blob/master/HW1/moneyball-evaluation-data.csv)
+
+#1. Data Exploration
+
+```{r}
 #read directly from the github
 moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
-
-glimpse(moneyballTraining)
 ```
 
-In the above variables. *TARGET_WINS* is the dependent (/response) variable, and all the others (excluding the INDEX) are independent variables (predictors). Lets review how each of these independent variables are distributed & how each of these indepdent variable relates to the response variable 'TARGET_WINS'.
+The dependent (response) variable is *TARGET_WINS*. Excluding INDEX, the rest of the variables are the independent variables (predictors). Lets review how each of these independent variables are distributed & how each of these indepdent variable relates to the response variable 'TARGET_WINS'.
 
-Review the *measure of the center* for the given variables:
+
+##1.1 Missing Values
+Review the *measure of the center* for the given variables. A quick look at the summary statistics indicate that there are missing values for some of the predictors.
 
 ```{r, warning=FALSE}
 summary(moneyballTraining[3:17])
 ```
 
-The above data summary of predictors shows there are considerable number of missing data for variables like - *TEAM_BATTING_HBP*, *TEAM_FIELDING_DP* etc., Below is the list of ALL predictor variables with missing data:
+The list of predictor variables with missing data and their counts:
 
 ```{r, warning=FALSE, message=FALSE}
-apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+moneyball.NA <- apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+moneyball.missing <- cbind(moneyball.NA, moneyball.NA/nrow(moneyballTraining))
+colnames(moneyball.missing) <- c('Missing', 'Percentage')
+kable(moneyball.missing)
 ```
 
-
+##1.2 Distribution of predictors
 Review the distributions of the predictors. Here are few histograms of the predictors.
 
 ```{r, warning=FALSE, message=FALSE}
@@ -78,7 +86,6 @@ g_tpsLg <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=log(TEAM_PITC
 grid.arrange(g_tbh, g_b2b,g_brsb, g_tph, g_tps, g_tfe,g_tfd,g_tbhr,g_tphLg,g_tpsLg, ncol=2)
 ```
 
-
 Based on the summary of the data, and the histograms, there are outliers and the distributions of the few of the predictors are skewed. Notice that *TEAM_PITCHING_H* and *TEAM_PICTCHING_SO* distributions are not visible at all in the above diagram, so the log transformation has been applied in the above.
 
 Lets also review the box plot's of the predictors.
@@ -88,7 +95,7 @@ meltMoneyBallTraining <- melt(moneyballTraining[3:17])
 ggplot(meltMoneyBallTraining, aes(factor(variable), value)) + geom_boxplot() + facet_wrap(~variable, scale="free")  + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
-Standard Deviation of the predictors
+##1.3 Standard Deviation
 
 ```{r}
 getStandardDev <- function(moneyballTraining)
@@ -102,12 +109,42 @@ getStandardDev <- function(moneyballTraining)
   return(stdDevs)
 }
 
-getStandardDev(moneyballTraining)
+std <- getStandardDev(moneyballTraining)
+kable(as.data.frame(std))
 ```
 
+##1.4 Correlation
+Find correlation of Response variable with predictor variables
+```{r}
 
-## Data Preparation
+corData <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
+t.corData <- t(corData[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
+moneyballTraining.cor <- melt(t.corData) # convert the wide format to long form for ease of read
+moneyballTraining.cor <- moneyballTraining.cor[, 2:3]
+colnames(moneyballTraining.cor) <- c('Variable', 'Correlation')
 
+kable(moneyballTraining.cor)
+## TEAM_BATTING_SO,TEAM_PITCHING_H,  TEAM_FIELDING_E  have negative correlation with total win. (which is expected)
+
+#TEAM_PITCHING_SO,TEAM_FIELDING_DP (but this should be positive)
+
+## TEAM_BASERUN_CS, TEAM_BATTING_HBP have very low correlation with Total win. So we dont have to consider these variables in the MODEL
+```
+  
+From the above *TEAM_BATTING_H* is high positively correlated, and *TEAM_FIELDING_E* is lower side of negative corelation with the *TARGET_WINS*
+
+```{r, warning=FALSE, message=FALSE}
+g1 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
+
+g2 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_FIELDING_E, y= TARGET_WINS), alpha = 0.2, color="red") + ggtitle("TARGET WINS  Vs TEAM_FIELDING_E") 
+ 
+grid.arrange(g1, g2, nrow=2)
+#similarly other specific independent variables Vs target wins correlation diagram
+```
+
+#2. Data Preparation
+
+##2.1 Imputation of issing data
 
 We have noticed that there are missing values for predictors, lets impute of missing values with mean.
 
@@ -121,50 +158,28 @@ for(i in 1:ncol(moneyballTraining)){
 After imputation, the missing values should not be there.
 
 ```{r}
-apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+mb.imp <- apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+#colnames(mb.imp) <- c('# Missing')
+kable(as.data.frame(mb.imp))
 ```
 
-Removing Outliers
+Correlation of response variable to predictor variable after imputing data
 ```{r}
+corData.imp <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
+t.corData.imp <- t(corData.imp[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
+moneyballTraining.cor.imp <- melt(t.corData.imp) # convert the wide format to long form for ease of read
+moneyballTraining.cor.imp <- moneyballTraining.cor.imp[, 2:3]
+
+colnames(moneyballTraining.cor.imp) <- c('Variable', 'Correlation')
+kable(moneyballTraining.cor.imp)
 ```
 
 
-find correlation of Response variable with predictor variables
-```{r}
-
-corData <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
-t(corData[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
-moneyballTraining.cor <- melt(t(corData[2,c(2:17)])) # convert the wide format to long form for ease of read
-moneyballTraining.cor
-
-## TEAM_BATTING_SO,TEAM_PITCHING_H,  TEAM_FIELDING_E  have negative correlation with total win. (which is expected)
-
-#TEAM_PITCHING_SO,TEAM_FIELDING_DP (but this should be positive)
-
-## TEAM_BASERUN_CS, TEAM_BATTING_HBP have very low correlation with Total win. So we dont have to consider these variables in the MODEL
-
-
-```
-
-From the above *TEAM_BATTING_H* is high positively correlated, and *TEAM_FIELDING_E* is lower side of negative corelation with the *TARGET_WINS*
-
-```{r, warning=FALSE, message=FALSE}
-g1 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
-
-
-g2 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_FIELDING_E, y= TARGET_WINS), alpha = 0.2, color="red") + ggtitle("TARGET WINS  Vs TEAM_FIELDING_E") 
- 
-grid.arrange(g1, g2, nrow=2)
-#similarly other specific independent variables Vs target wins correlation diagram
-
-```
-
-
-## 3.Build  Models
+#3. Build  Models
 To fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS' &  'TEAM BATTING HBP' as they have very low correlation with Wins:
 We eliminate TEAM_BASERUN_CS
 
-# 3.1 Manual elimination
+## 3.1 Manual elimination
 ```{r}
 #Full Model
 
@@ -184,10 +199,9 @@ summary(team.mod2)
 #R-squared:  0.3188,  Adjusted R-squared:  0.3149  
 #Adjusted R-squared is higher than the original one.  
 
-
 ```
 
-#3.2 Stepwise Regression
+##3.2 Stepwise Regression
 ```{r}
 fit <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
  TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_BATTING_HBP + 
@@ -201,14 +215,14 @@ summary(step)
 #R-squared:  0.3186,  Adjusted R-squared:  0.3153 
 
 par(mfrow=c(2, 2))
-plot(step,, main="Stepwise Regression")
+plot(step, main="Stepwise Regression")
 ```
-#Model with Stepwise Regression
+####Model with Stepwise Regression
 TARGET_WINS = 23.67 + 0.048*TEAM_BATTING_H + -0.020*TEAM_BATTING_2B + 0.0625*TEAM_BATTING_3B + 
     0.0698*TEAM_BATTING_HR + 0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 0.029*TEAM_BASERUN_SB + 
     -0.0007*TEAM_PITCHING_H + 0.0029*TEAM_PITCHING_SO + -0.0206*TEAM_FIELDING_E + -0.121*TEAM_FIELDING_DP
     
-#3.3 Backward elimination model   
+##3.3 Backward elimination model   
 ```{r}
 step.backward <- step(fit, direction="backward")
 step$anova # display results
@@ -218,13 +232,13 @@ summary(step.backward)
 par(mfrow=c(2, 2))
 plot(step.backward, main="Backward elimination")
 ```
-#Model with Backward elimination
+###Model with Backward elimination
 TARGET_WINS = 23.66 + 0.048*TEAM_BATTING_H + -0.020*TEAM_BATTING_2B + 
     0.062*TEAM_BATTING_3B + 0.0698*TEAM_BATTING_HR + 0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 
     0.029*TEAM_BASERUN_SB + -0.001*TEAM_PITCHING_H + 0.002*TEAM_PITCHING_SO + -0.021*TEAM_FIELDING_E + 
     -0.121*TEAM_FIELDING_DP
 
-#3.4 forward Elimination
+##3.4 forward Elimination
 ```{r}
 forward.null <-lm(TARGET_WINS~1,data=moneyballTraining)
 forward.full <-lm(TARGET_WINS~.,data=moneyballTraining)
@@ -235,7 +249,7 @@ summary(step.forward)
 par(mfrow=c(2, 2))
 plot(step.forward, main="Forward Elimination")
 ```
-#Model with forward elimination
+###Model with forward elimination
 TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E + 
     0.029*TEAM_BASERUN_SB + -0.12*TEAM_FIELDING_DP + 0.015*TEAM_PITCHING_HR + 0.061*TEAM_BATTING_3B + 
     0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 0.003*TEAM_PITCHING_SO + -0.0007*TEAM_PITCHING_H + 
@@ -248,9 +262,8 @@ TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E +
 
 
 ##Adding the below simple regression analysis, we can remove if it does not make sense in final version. 
-##-Suman
 
-#3.5 Regression Analysis by removing high vif, and high p value predictors
+##3.5 Regression Analysis by removing high Variance Inflation Factor(VIF), and high p value predictors
 ```{r}
 glimpse(moneyballTraining)
 
@@ -306,7 +319,7 @@ summary(fit4)
 
 ```
 
-#3.6 RMSE - Root Mean Sqared Error (verification with test data)
+###3.5.1. RMSE - Root Mean Sqared Error (verification with test data)
 ```{r}
 #Lets take our model, and apply it on the test dataset.
 predicted.wins <- predict(fit4, newdata = moneyballTest)
@@ -325,7 +338,7 @@ ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point()
 #hmmm. there appears to be few outliers
 ```
 
-#3.7 Diagnostic plots, check for linearity, normality is justified for residuals ...
+###3.5.2 Diagnostic plots, check for linearity, normality is justified for residuals ...
 ```{r}
 #Check if linearity in residuals violated
 plot(fit4, which=1)
@@ -350,7 +363,7 @@ ggplot(d, aes(x)) + geom_histogram()
 ggplot(d, aes(x)) + geom_density(color="red") + stat_function(fun=dnorm, args=list(mean=mean(d$x), sd=sd(d$x)), color="dark green") #residuals are normal.
 ```
 
-#3.8 Evaluation
+# 4. Selection
 ```{r}
 moneyballEvaluation <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
@@ -367,9 +380,104 @@ apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
 eval.wins <- predict(fit4, newdata = moneyballEvaluation)
 
 head(eval.wins)
-
-#....what else ?
-
 ```
 
+# A. Appendix
+
+```{r eval=FALSE, echo=TRUE, options(width = 80)}
+
+library(RCurl)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(gridExtra)
+library(psych)
+library(reshape)
+library(MASS)
+library(car)
+library(recommenderlab)
+library(knitr)
+#opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+
+moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+summary(moneyballTraining[3:17])
+
+moneyball.NA <- apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+moneyball.missing <- cbind(moneyball.NA, moneyball.NA/nrow(moneyballTraining))
+colnames(moneyball.missing) <- c('Missing', 'Percentage')
+kable(moneyball.missing)
+
+# Explore independent variable TEAM_BATTING_H
+g_tbh <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_b2b <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_2B), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_brsb <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BASERUN_SB), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tph <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_PITCHING_H), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tps <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_PITCHING_SO), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tfe <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_FIELDING_E), binwidth = 0.5) + theme(axis.text=element_text(size=8),axis.title=element_text(size=8))
+
+g_tfd <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_FIELDING_DP), binwidth = 0.5) + theme(axis.text=element_text(size=8),axis.title=element_text(size=8))
+
+g_tbhr <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_HR), binwidth = 0.5) + theme(axis.text=element_text(size=8),axis.title=element_text(size=8))
+
+g_tphLg <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=log(TEAM_PITCHING_H)), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tpsLg <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=log(TEAM_PITCHING_SO)), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+grid.arrange(g_tbh, g_b2b,g_brsb, g_tph, g_tps, g_tfe,g_tfd,g_tbhr,g_tphLg,g_tpsLg, ncol=2)
+
+meltMoneyBallTraining <- melt(moneyballTraining[3:17])
+ggplot(meltMoneyBallTraining, aes(factor(variable), value)) + geom_boxplot() + facet_wrap(~variable, scale="free")  + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+getStandardDev <- function(moneyballTraining)
+{
+  stdDevs <- SD(moneyballTraining[3:17])
+  par(mai=c(3,1.2,1,1))
+  
+  # transformed the y, due to high variances.
+  barplot(stdDevs[order(stdDevs, decreasing = T)], log = "y", las=2, main="Std Dev of Predictors", xlab="", ylab="Log(SD)", cex.axis = 0.8, cex.names=0.8) 
+  
+  return(stdDevs)
+}
+
+std <- getStandardDev(moneyballTraining)
+kable(as.data.frame(std))
+
+corData <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
+t.corData <- t(corData[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
+moneyballTraining.cor <- melt(t.corData) # convert the wide format to long form for ease of read
+moneyballTraining.cor <- moneyballTraining.cor[, 2:3]
+colnames(moneyballTraining.cor) <- c('Variable', 'Correlation')
+
+kable(moneyballTraining.cor)
+
+g1 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
+
+g2 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_FIELDING_E, y= TARGET_WINS), alpha = 0.2, color="red") + ggtitle("TARGET WINS  Vs TEAM_FIELDING_E") 
+
+grid.arrange(g1, g2, nrow=2)
+#similarly other specific independent variables Vs target wins correlation diagram
+
+#Replacing Missing Values In dataset with column mean
+for(i in 1:ncol(moneyballTraining)){
+  moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
+}
+
+mb.imp <- apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+#colnames(mb.imp) <- c('# Missing')
+kable(as.data.frame(mb.imp))
+
+corData.imp <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
+t.corData.imp <- t(corData.imp[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
+moneyballTraining.cor.imp <- melt(t.corData.imp) # convert the wide format to long form for ease of read
+moneyballTraining.cor.imp <- moneyballTraining.cor.imp[, 2:3]
+
+colnames(moneyballTraining.cor.imp) <- c('Variable', 'Correlation')
+kable(moneyballTraining.cor.imp)
+```
 
