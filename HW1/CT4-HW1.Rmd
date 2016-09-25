@@ -1,25 +1,21 @@
 ---
-title: "CT4 - HW1"
+title: "Critical Thinking Group 4 - HW1"
 author: "Sreejaya, Suman, Vuthy"
 date: "September 12, 2016"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
-##Critical Thinking Group 4 - HW1
-
-Let me know what you guys think. We can use this file to do the coding and document details for each other. At the end, when we are done, we put together a much cleaner document without all the details and code we left for each other.  
-
-
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE}
 ## load libraries ####
 
 library(RCurl)
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
 library(gridExtra)
 library(psych)
 library(reshape)
@@ -29,29 +25,72 @@ library(car)
 library(recommenderlab)
 ```
 
-Read in the file to do Exploratory Data Analysis
+## Data Exploration
 
-```{r}
+  The given moneyball dataset has got 2,276 observations and 17 variables. The below is the glimpse of the data elements along with their data types, and sample data.
+  
+```{r, warning=FALSE}
 #read directly from the github
 moneyballTraining <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
-# Explore independent variable TEAM_BATTING_H
-ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + ggtitle(paste("Histogram  - " , "TEAM_BATTING_H")) 
-
-qplot(y=moneyballTraining$TEAM_BATTING_H, x= 1, geom = "boxplot")
-
-ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
-
-#similarly other independent variables Vs target wins
-
+glimpse(moneyballTraining)
 ```
 
-Summary to review data distribution, NA's. Impute of missing values and view Standard Deviation before and after imputation.
-```{r}
-glimpse(moneyballTraining)
+In the above variables. *TARGET_WINS* is the dependent (/response) variable, and all the others (excluding the INDEX) are independent variables (predictors). Lets review how each of these independent variables are distributed & how each of these indepdent variable relates to the response variable 'TARGET_WINS'.
 
+Review the *measure of the center* for the given variables:
+
+```{r, warning=FALSE}
 summary(moneyballTraining[3:17])
+```
 
+The above data summary of predictors shows there are considerable number of missing data for variables like - *TEAM_BATTING_HBP*, *TEAM_FIELDING_DP* etc., Below is the list of ALL predictor variables with missing data:
+
+```{r, warning=FALSE, message=FALSE}
+apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
+```
+
+
+Review the distributions of the predictors. Here are few histograms of the predictors.
+
+```{r, warning=FALSE, message=FALSE}
+# Explore independent variable TEAM_BATTING_H
+g_tbh <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_H), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_b2b <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_2B), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_brsb <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BASERUN_SB), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tph <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_PITCHING_H), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tps <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_PITCHING_SO), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tfe <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_FIELDING_E), binwidth = 0.5) + theme(axis.text=element_text(size=8),axis.title=element_text(size=8))
+
+g_tfd <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_FIELDING_DP), binwidth = 0.5) + theme(axis.text=element_text(size=8),axis.title=element_text(size=8))
+
+g_tbhr <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=TEAM_BATTING_HR), binwidth = 0.5) + theme(axis.text=element_text(size=8),axis.title=element_text(size=8))
+
+g_tphLg <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=log(TEAM_PITCHING_H)), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+g_tpsLg <- ggplot(data = moneyballTraining) + geom_histogram(aes(x=log(TEAM_PITCHING_SO)), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+grid.arrange(g_tbh, g_b2b,g_brsb, g_tph, g_tps, g_tfe,g_tfd,g_tbhr,g_tphLg,g_tpsLg, ncol=2)
+```
+
+
+Based on the summary of the data, and the histograms, there are outliers and the distributions of the few of the predictors are skewed. Notice that *TEAM_PITCHING_H* and *TEAM_PICTCHING_SO* distributions are not visible at all in the above diagram, so the log transformation has been applied in the above.
+
+Lets also review the box plot's of the predictors.
+
+```{r, warning=FALSE, message=FALSE}
+meltMoneyBallTraining <- melt(moneyballTraining[3:17])
+ggplot(meltMoneyBallTraining, aes(factor(variable), value)) + geom_boxplot() + facet_wrap(~variable, scale="free")  + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+```
+
+Standard Deviation of the predictors
+
+```{r}
 getStandardDev <- function(moneyballTraining)
 {
   stdDevs <- SD(moneyballTraining[3:17])
@@ -64,27 +103,31 @@ getStandardDev <- function(moneyballTraining)
 }
 
 getStandardDev(moneyballTraining)
+```
 
+
+## Data Preparation
+
+
+We have noticed that there are missing values for predictors, lets impute of missing values with mean.
+
+```{r}
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballTraining)){
   moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
 }
-
-#Standard Deviation - after
-#After imputation , verify the standard deviation again.
-getStandardDev(moneyballTraining)
 ```
 
-Finding Outliers using boxplot
+After imputation, the missing values should not be there.
+
 ```{r}
-meltMoneyBallTraining <- melt(moneyballTraining[3:17])
-ggplot(meltMoneyBallTraining, aes(factor(variable), value)) + geom_boxplot() + facet_wrap(~variable, scale="free")
+apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
 ```
-
 
 Removing Outliers
 ```{r}
 ```
+
 
 find correlation of Response variable with predictor variables
 ```{r}
@@ -102,6 +145,20 @@ moneyballTraining.cor
 
 
 ```
+
+From the above *TEAM_BATTING_H* is high positively correlated, and *TEAM_FIELDING_E* is lower side of negative corelation with the *TARGET_WINS*
+
+```{r, warning=FALSE, message=FALSE}
+g1 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
+
+
+g2 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_FIELDING_E, y= TARGET_WINS), alpha = 0.2, color="red") + ggtitle("TARGET WINS  Vs TEAM_FIELDING_E") 
+ 
+grid.arrange(g1, g2, nrow=2)
+#similarly other specific independent variables Vs target wins correlation diagram
+
+```
+
 
 ## 3.Build  Models
 To fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS' &  'TEAM BATTING HBP' as they have very low correlation with Wins:
