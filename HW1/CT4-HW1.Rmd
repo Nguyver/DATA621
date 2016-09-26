@@ -143,16 +143,7 @@ grid.arrange(g1, g2, nrow=2)
 
 #2. Data Preparation
 
-##2.1.Eliminate variables with most missing data
-
-It is clear from the dataset 'moneyball.missing'  that 'TEAM BATTING HBP' has more than 90% missing items. 
-So we are removing the variable from the dataset.
-
-```{r}
-moneyballTraining <- subset(moneyballTraining, select = -TEAM_BATTING_HBP )
-```
-
-##2.2 Imputation of missing data
+##2.1 Imputation of missing data
 
 We have noticed that there are missing values for predictors, lets impute of missing values with mean.
 
@@ -166,7 +157,7 @@ for(i in 1:ncol(moneyballTraining)){
 After imputation, the missing values should not be there.
 
 ```{r}
-mb.imp <- apply(moneyballTraining[3:16], 2, function(x) sum(is.na(x)))
+mb.imp <- apply(moneyballTraining[3:17], 2, function(x) sum(is.na(x)))
 #colnames(mb.imp) <- c('# Missing')
 kable(as.data.frame(mb.imp))
 ```
@@ -174,7 +165,7 @@ kable(as.data.frame(mb.imp))
 Correlation of response variable to predictor variable after imputing data
 ```{r}
 corData.imp <-  round(cor(moneyballTraining), 3)                    # rounding makes it easier to look at
-t.corData.imp <- t(corData.imp[2,c(2:16)])   # we are only interested on correlation of Team win against all other predictors
+t.corData.imp <- t(corData.imp[2,c(2:17)])   # we are only interested on correlation of Team win against all other predictors
 moneyballTraining.cor.imp <- melt(t.corData.imp) # convert the wide format to long form for ease of read
 moneyballTraining.cor.imp <- moneyballTraining.cor.imp[, 2:3]
 
@@ -222,7 +213,7 @@ options(stringsAsFactors = FALSE)
 results <- data.frame( character(),  numeric())
 
 #Full Model
-model.manualElimination <- lm(formula = TARGET_WINS ~ . -INDEX -TEAM_BASERUN_CS -TEAM_BATTING_SO,data =moneyballTraining)
+model.manualElimination <- lm(formula = TARGET_WINS ~ . -INDEX -TEAM_BASERUN_CS -TEAM_BATTING_HBP -TEAM_BATTING_SO,data =moneyballTraining)
 
 summary(model.manualElimination)$coefficients[,4] 
 
@@ -233,9 +224,8 @@ par(mfrow=c(2, 2))
 graphics::plot(model.manualElimination, main="Manual elimination")
 ```
 
-*The adjusted r-squared values is `r ar1`*
+The adjusted r-squared values is `r ar1`
 
-In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. In the scale-location graph as well, the red line is about flat, which indicates that residual variance is constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line.However, the Residual Vs Leverage plot has the redline not alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is NOT true here.
 
 ##3.2 Stepwise Regression
 
@@ -258,9 +248,8 @@ par(mfrow=c(2, 2))
 graphics::plot(model.step, main="Stepwise Regression")
 ```
 
-*And the adjusted r-squared value is `r ar2`*
+And the adjusted r-squared value is `r ar2`
 
-In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. In the scale-location graph as well, the red line is about flat, which indicates that residual variance is  constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line. However, the Residual Vs Leverage plot has the redline not alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is NOT true here.
 
 ##3.3 Stepwise Backward   
 
@@ -278,16 +267,14 @@ par(mfrow=c(2, 2))
 graphics::plot(model.step.backward, main="Backward elimination")
 ```
 
-*The adjusted r-squared value in the stepwise backward model is `r ar3`*
-
-In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. In the scale-location graph as well, the red line is about flat, which indicates that residual variance is constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line. However, the Residual Vs Leverage plot has the redline not alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is NOT true here.
+The adjusted r-squared value in the stepwise backward model is `r ar3`
 
 ##3.4 Stepwise Forward
 
 The coefficients we obtained here are:
 
 ```{r}
-forward.null <-lm(TARGET_WINS~ 1,data=moneyballTraining)
+forward.null <-lm(TARGET_WINS~ -1,data=moneyballTraining)
 forward.full <-lm(TARGET_WINS~. -INDEX,data=moneyballTraining)
 model.step.forward<- step(forward.null, scope=list(lower=forward.null, upper=forward.full), direction="forward", trace=FALSE)
 
@@ -300,9 +287,7 @@ par(mfrow=c(2, 2))
 graphics::plot(model.step.forward, main="Forward Elimination")
 ```
 
-*The adjusted r-squared value in the stepwise Forward model is `r ar4`*
-
-In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. In the scale-location graph as well, the red line is about flat, which indicates that residual variance is constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line. And notice here in the Residuals Vs Leverage graph, the standardized residuals are some what centered around zero. ( the red line stays closer to the horizontal gray dashed line, this indicates that the assumption of standardized residuals centered around zero holds true)
+The adjusted r-squared value in the stepwise backward model is `r ar4`
 
 ##3.5 Remove VIF, and high p value predictors manually.
 
@@ -334,7 +319,7 @@ These predictors:  *TEAM_BATTING_3B, TEAM_BATTING_2B, TEAM_BATTING_SO, TEAM_BATT
 
 Here are the final co-efficients we got:
 ```{r, warning=FALSE, message=FALSE}
-model.vif <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B -TEAM_BATTING_2B -TEAM_BATTING_SO  -TEAM_PITCHING_H -TEAM_PITCHING_SO, data=moneyballTraining)
+model.vif <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B -TEAM_BATTING_2B -TEAM_BATTING_SO -TEAM_BATTING_HBP -TEAM_PITCHING_H -TEAM_PITCHING_SO, data=moneyballTraining)
 
 ar5 <-  summary(model.vif)$adj.r.squared
 summary(model.vif)$coefficients[,4] 
@@ -345,15 +330,11 @@ par(mfrow=c(2, 2))
 graphics::plot(model.vif, main="VIF")
 ```
 
-*The adjusted r-squared value we got from the above model is `r ar5`*
-
-In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. In the scale-location graph as well, the red line is about flat, which indicates that residual variance is constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line (so, errors are normally distributed). And notice here in the Residuals Vs Leverage graph, the standardized residuals are centered around zero. ( the red line stays closer to the horizontal gray dashed line, this indicates that the assumption of standardized residuals centered around zero is good)
+The adjusted r-squared value we got from the above model is `r ar5`
 
 # 4. Selection
 
 Lets now check to see how each model performed, by looking at the adjusted r-sqaured, RMSE values.
-
-##4.1. Adjusted R-Square
 
 Here is the adjusted R-Sqaured values from different model above:
 
@@ -362,82 +343,69 @@ colnames(results) <- c("Method", "Adj R Squared")
 kable(results)
 ```
 
-Based on our diagnostic observations ( assumption of linearity, normality in residuals) from the above models, combined with the above Adj R squared values, we shortlist these 2 model for further validation:
 
-  1. Stepwise Forward
-  2. High Variance Inflation Factor (VIF) , high p-value predictors elimination. 
-
-##4.2. RMSE - Root Mean Sqared Error (verification with test data)
-
-Lets take our shortlisted models, and apply it on our *test data set*, and compare it with the actuals.
-
+##4.1. RMSE - Root Mean Sqared Error (verification with test data)
 ```{r}
 #Lets take our model, and apply it on the test dataset.
-predicted.wins <- predict(model.step.forward, newdata = moneyballTest)
+predicted.wins <- predict(model.vif, newdata = moneyballTest)
 
 #Lets calculate the RMSE
 residuals <- moneyballTest$TARGET_WINS - predicted.wins
-rmse_forward <- sqrt(mean(residuals^2))
+(rmse_test <- sqrt(mean(residuals^2)))
+#high rmse [13.3875]
 
 #lets put in ggplot
 rmse.df <- data.frame(actual = moneyballTest$TARGET_WINS, predicted = predicted.wins)
-ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point() + geom_smooth() + ggtitle("Forward Regr Model- Predicted Vs Actual")
+
+#dev.off()
+ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point()
+
+#hmmm. there appears to be few outliers
 ```
 
-*The RMSE in Stepwise Forward Model is `r rmse_forward`*
-
-Lets validate the model where we removed the high VIF variables (multicollinearity) :
-
+###3.5.2 Diagnostic plots, check for linearity, normality is justified for residuals ...
 ```{r}
-#Lets take our model, and apply it on the test dataset.
-predicted.wins2 <- predict(model.vif, newdata = moneyballTest)
+#Check if linearity in residuals violated
+plot(model.vif, which=1)
 
-#Lets calculate the RMSE
-residuals2 <- moneyballTest$TARGET_WINS - predicted.wins2
-rmse_vif <- sqrt(mean(residuals2^2))
+#Observation: the red line is about flat, which indicates the linearity in residuals is good.
 
-#lets put in ggplot
-rmse.df2 <- data.frame(actual = moneyballTest$TARGET_WINS, predicted = predicted.wins2)
-ggplot(rmse.df2, aes(x=actual, y = predicted)) + geom_point() + geom_smooth() + ggtitle("VIF Remove model - Predicted Vs Actual")
+
+#Is residual variance is constant [ assumption of homo scedasticity is fine or not ]
+plot(model.vif, which=3)
+
+
+#For normality of residuals
+plot(model.vif, which=2) #if most of the resids are on the straight line we are good to go.
+
+#Lets check normality via ggplot for specific data element
+# say, TEAM_BATTING_HR
+d = data.frame(x=model.vif$residuals, y = moneyballTraining$TEAM_BATTING_HR)
+ggplot(d, aes(x,y)) + geom_point() + geom_smooth()
+
+ggplot(d, aes(x)) + geom_histogram()
+
+ggplot(d, aes(x)) + geom_density(color="red") + stat_function(fun=dnorm, args=list(mean=mean(d$x), sd=sd(d$x)), color="dark green") #residuals are normal.
 ```
-
-*The RMSE in Stepwise Forward Model is `r rmse_vif`*
-
-##4.3. Conclusion
-
-*Both the models performed similar, however RMSE is slightly lower in the Stepwise Forward model, so we will consider that model as a best fit for our evaluation.*
-
 
 # 5. Evaluation
-
-We will load the evaluation dataset , and predict the *TARGET_WINS* by applying our final model.
-
-The given evaluation dataset has 259 observations, and the below are the missing values:
-
-```{r, warning=FALSE, message=FALSE}
+```{r}
 moneyballEvaluation <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
 #check how many na's for each column
 apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
-```
 
-Lets replace the missing values with column mean & predict.
-
-```{r, warning=FALSE, message=FALSE}
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballEvaluation)){
   moneyballEvaluation[is.na(moneyballEvaluation[,i]), i] <- mean(moneyballEvaluation[,i], na.rm = TRUE)
 }
 
-moneyballEvaluation$PredictedWins <- round(predict(model.step.forward, newdata = moneyballEvaluation))
+apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
 
-#write.csv(file="moneyballEvaluation_Predictions.csv", moneyballEvaluation)
+eval.wins <- predict(model.vif, newdata = moneyballEvaluation)
+
+head(eval.wins)
 ```
-
-[Click here to view the Predictions for Evaluation File](https://github.com/Nguyver/DATA621-HW/blob/master/HW1/moneyballEvaluation_Predictions.csv)  
-
-
-
 
 # A. Appendix
 
@@ -520,9 +488,6 @@ g2 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_FIELDING_E, y= TAR
 grid.arrange(g1, g2, nrow=2)
 #similarly other specific independent variables Vs target wins correlation diagram
 
-
-moneyballTraining <- subset(moneyballTraining, select = -TEAM_BATTING_HBP )
-
 #Replacing Missing Values In dataset with column mean
 for(i in 1:ncol(moneyballTraining)){
   moneyballTraining[is.na(moneyballTraining[,i]), i] <- mean(moneyballTraining[,i], na.rm = TRUE)
@@ -539,123 +504,5 @@ moneyballTraining.cor.imp <- moneyballTraining.cor.imp[, 2:3]
 
 colnames(moneyballTraining.cor.imp) <- c('Variable', 'Correlation')
 kable(moneyballTraining.cor.imp)
-
-set.seed(11)
-samples <- sample(1:nrow(moneyballTraining), 0.75*nrow(moneyballTraining))
-moneyballTraining <- moneyballTraining[samples,]
-moneyballTest <- moneyballTraining[-samples,]
-
-options(stringsAsFactors = FALSE)
-results <- data.frame( character(),  numeric())
-
-#Full Model
-model.manualElimination <- lm(formula = TARGET_WINS ~ . -INDEX -TEAM_BASERUN_CS -TEAM_BATTING_SO,data =moneyballTraining)
-
-summary(model.manualElimination)$coefficients[,4] 
-
-ar1 <-  summary(model.manualElimination)$adj.r.squared
-
-results <- rbind(results, c("Manual Elimination", round(ar1 * 100, 2)))
-par(mfrow=c(2, 2))
-graphics::plot(model.manualElimination, main="Manual elimination")
-
-fit <- lm(formula = TARGET_WINS ~. -INDEX , data =moneyballTraining)
-
-# Stepwise Regression
-model.step <- stepAIC(fit, direction="both", trace=FALSE)
-summary(model.step)$coefficients[,4] 
-
-ar2 <-  summary(model.step)$adj.r.squared
-
-results <- rbind(results, c("Stepwise Regression", round(ar2 * 100, 2)))
-
-par(mfrow=c(2, 2))
-graphics::plot(model.step, main="Stepwise Regression")
-
-model.step.backward <- step(fit, direction="backward",trace=FALSE)
-summary(model.step.backward)$coefficients[,4] 
-
-ar3 <-  summary(model.step.backward)$adj.r.squared
-
-results <- rbind(results, c("Stepwise Backward", round(ar3 * 100, 2)))
-
-par(mfrow=c(2, 2))
-graphics::plot(model.step.backward, main="Backward elimination")
-
-forward.null <-lm(TARGET_WINS~ 1,data=moneyballTraining)
-forward.full <-lm(TARGET_WINS~. -INDEX,data=moneyballTraining)
-model.step.forward<- step(forward.null, scope=list(lower=forward.null, upper=forward.full), direction="forward", trace=FALSE)
-
-summary(model.step.forward)$coefficients[,4] 
-ar4 <-  summary(model.step.forward)$adj.r.squared
-
-results <- rbind(results, c("Stepwise Forward", round(ar4 * 100, 2)))
-
-par(mfrow=c(2, 2))
-graphics::plot(model.step.forward, main="Forward Elimination")
-
-#Let's consider ALL the variables ( except INDEX).
-fit1 <- lm(TARGET_WINS ~ . -INDEX, data=moneyballTraining)
-
-#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
-#got high vif (>5)
-vifFit1 <- vif(fit1)
-
-#sort by descending
-vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
-names(vif.df) <- c('VIF')
-kable(vif.df)
-
-fit2 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB, data=moneyballTraining)
-
-model.vif <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B -TEAM_BATTING_2B -TEAM_BATTING_SO  -TEAM_PITCHING_H -TEAM_PITCHING_SO, data=moneyballTraining)
-
-ar5 <-  summary(model.vif)$adj.r.squared
-summary(model.vif)$coefficients[,4] 
-
-results <- rbind(results, c("VIF Elimination", round(ar5 * 100, 2)))
-
-par(mfrow=c(2, 2))
-graphics::plot(model.vif, main="VIF")
-
-colnames(results) <- c("Method", "Adj R Squared")
-kable(results)
-
-#Lets take our model, and apply it on the test dataset.
-predicted.wins <- predict(model.step.forward, newdata = moneyballTest)
-
-#Lets calculate the RMSE
-residuals <- moneyballTest$TARGET_WINS - predicted.wins
-rmse_forward <- sqrt(mean(residuals^2))
-
-#lets put in ggplot
-rmse.df <- data.frame(actual = moneyballTest$TARGET_WINS, predicted = predicted.wins)
-ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point() + geom_smooth() + ggtitle("Forward Regr Model- Predicted Vs Actual")
-
-#Lets take our model, and apply it on the test dataset.
-predicted.wins2 <- predict(model.vif, newdata = moneyballTest)
-
-#Lets calculate the RMSE
-residuals2 <- moneyballTest$TARGET_WINS - predicted.wins2
-rmse_vif <- sqrt(mean(residuals2^2))
-
-#lets put in ggplot
-rmse.df2 <- data.frame(actual = moneyballTest$TARGET_WINS, predicted = predicted.wins2)
-ggplot(rmse.df2, aes(x=actual, y = predicted)) + geom_point() + geom_smooth() + ggtitle("VIF Remove model - Predicted Vs Actual")
-
-moneyballEvaluation <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
-
-#check how many na's for each column
-apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
-
-#Replacing Missing Values In dataset with column mean
-for(i in 1:ncol(moneyballEvaluation)){
-  moneyballEvaluation[is.na(moneyballEvaluation[,i]), i] <- mean(moneyballEvaluation[,i], na.rm = TRUE)
-}
-
-moneyballEvaluation$PredictedWins <- round(predict(model.step.forward, newdata = moneyballEvaluation))
-
-#write.csv(file="moneyballEvaluation_Predictions.csv", moneyballEvaluation)
-
 ```
 
