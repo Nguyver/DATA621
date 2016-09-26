@@ -15,7 +15,6 @@ library(RCurl)
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
-library(gridExtra)
 library(psych)
 library(reshape)
 library(MASS)
@@ -131,7 +130,7 @@ kable(moneyballTraining.cor)
 ## TEAM_BASERUN_CS, TEAM_BATTING_HBP have very low correlation with Total win. So we dont have to consider these variables in the MODEL
 ```
   
-From the above *TEAM_BATTING_H* is high positively correlated, and *TEAM_FIELDING_E* is lower side of negative corelation with the *TARGET_WINS*
+From the above we can see that the *TEAM_BATTING_H* is high positively correlated, and *TEAM_FIELDING_E* has the  negative corelation with the *TARGET_WINS*. Lets just visualize these two:
 
 ```{r, warning=FALSE, message=FALSE}
 g1 = ggplot(data = moneyballTraining) + geom_point(aes(x=TEAM_BATTING_H, y= TARGET_WINS), alpha = 0.2, color="blue") + ggtitle("TARGET WINS  Vs TEAM_BATTING_H") 
@@ -144,7 +143,7 @@ grid.arrange(g1, g2, nrow=2)
 
 #2. Data Preparation
 
-##2.1 Imputation of issing data
+##2.1 Imputation of missing data
 
 We have noticed that there are missing values for predictors, lets impute of missing values with mean.
 
@@ -176,153 +175,179 @@ kable(moneyballTraining.cor.imp)
 
 
 #3. Build  Models
-To fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS' &  'TEAM BATTING HBP' as they have very low correlation with Wins:
-We eliminate TEAM_BASERUN_CS
 
-## 3.1 Manual elimination
+
+Lets try to build different models to predict the *TARTGET_WINS*. The first thing we would like to do is to split our given dataset into 'training' and 'test' datasets.
+
+Lets take sample of 75% observations into *training* bucket, which we will use for the model building, and the remaining 25% into *test* bucket, which can be used to compare the model predictions with the actuals. 
+
 ```{r}
-#Full Model
-
-team.mod1 <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
- TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_BATTING_HBP +
-TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
-TEAM_FIELDING_E + TEAM_FIELDING_DP,data =moneyballTraining)
-summary(team.mod1)
-
- #R-squared:  0.3192,  Adjusted R-squared:  0.3147
-team.mod2 <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
- TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + 
-TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
-TEAM_FIELDING_E + TEAM_FIELDING_DP,data =moneyballTraining)
-
-summary(team.mod2)
-#R-squared:  0.3188,  Adjusted R-squared:  0.3149  
-#Adjusted R-squared is higher than the original one.  
-
-```
-
-##3.2 Stepwise Regression
-```{r}
-fit <- lm(formula = TARGET_WINS~TEAM_BATTING_H +  TEAM_BATTING_2B+  TEAM_BATTING_3B +
- TEAM_BATTING_HR + TEAM_BATTING_BB +  TEAM_BATTING_SO +  TEAM_BASERUN_SB + TEAM_BASERUN_CS + TEAM_BATTING_HBP + 
-TEAM_PITCHING_H +  TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO +
-TEAM_FIELDING_E + TEAM_FIELDING_DP,data =moneyballTraining)
-
-# Stepwise Regression
-step <- stepAIC(fit, direction="both")
-step$anova # display results
-summary(step)
-#R-squared:  0.3186,  Adjusted R-squared:  0.3153 
-
-par(mfrow=c(2, 2))
-plot(step, main="Stepwise Regression")
-```
-####Model with Stepwise Regression
-TARGET_WINS = 23.67 + 0.048*TEAM_BATTING_H + -0.020*TEAM_BATTING_2B + 0.0625*TEAM_BATTING_3B + 
-    0.0698*TEAM_BATTING_HR + 0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 0.029*TEAM_BASERUN_SB + 
-    -0.0007*TEAM_PITCHING_H + 0.0029*TEAM_PITCHING_SO + -0.0206*TEAM_FIELDING_E + -0.121*TEAM_FIELDING_DP
-    
-##3.3 Backward elimination model   
-```{r}
-step.backward <- step(fit, direction="backward")
-step$anova # display results
-summary(step.backward)
-
-#R-squared:  0.3186,  Adjusted R-squared:  0.3153
-par(mfrow=c(2, 2))
-plot(step.backward, main="Backward elimination")
-```
-###Model with Backward elimination
-TARGET_WINS = 23.66 + 0.048*TEAM_BATTING_H + -0.020*TEAM_BATTING_2B + 
-    0.062*TEAM_BATTING_3B + 0.0698*TEAM_BATTING_HR + 0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 
-    0.029*TEAM_BASERUN_SB + -0.001*TEAM_PITCHING_H + 0.002*TEAM_PITCHING_SO + -0.021*TEAM_FIELDING_E + 
-    -0.121*TEAM_FIELDING_DP
-
-##3.4 forward Elimination
-```{r}
-forward.null <-lm(TARGET_WINS~1,data=moneyballTraining)
-forward.full <-lm(TARGET_WINS~.,data=moneyballTraining)
-step.forward<- step(forward.null, scope=list(lower=forward.null, upper=forward.full), direction="forward")
-
-summary(step.forward)
-# R-squared:  0.3188,  Adjusted R-squared:  0.3152
-par(mfrow=c(2, 2))
-plot(step.forward, main="Forward Elimination")
-```
-###Model with forward elimination
-TARGET_WINS = 24.23 + 0.048*TEAM_BATTING_H + -0.021*TEAM_FIELDING_E + 
-    0.029*TEAM_BASERUN_SB + -0.12*TEAM_FIELDING_DP + 0.015*TEAM_PITCHING_HR + 0.061*TEAM_BATTING_3B + 
-    0.011*TEAM_BATTING_BB + -0.009*TEAM_BATTING_SO + 0.003*TEAM_PITCHING_SO + -0.0007*TEAM_PITCHING_H + 
-    0.054*TEAM_BATTING_HR + -0.02*TEAM_BATTING_2B
-
-
-##Backward elimination and Stepwise Regression Model has the best Adjusted R-squared value.
-###So we would like select Backward elimination model  
-
-
-
-##Adding the below simple regression analysis, we can remove if it does not make sense in final version. 
-
-##3.5 Regression Analysis by removing high Variance Inflation Factor(VIF), and high p value predictors
-```{r}
-glimpse(moneyballTraining)
-
-#Lets first break the training set into training and test sets.
 set.seed(11)
 samples <- sample(1:nrow(moneyballTraining), 0.75*nrow(moneyballTraining))
 moneyballTraining <- moneyballTraining[samples,]
 moneyballTest <- moneyballTraining[-samples,]
-glimpse(moneyballTraining)
-glimpse(moneyballTest)
+```
 
+Number of observations in *training* dataset is `r nrow(moneyballTraining)`
+Number of observations in *test* dataset is `r nrow(moneyballTest)`
+
+
+The below are the few different approaches we will try to build the models:
+
+  1. Manual elimination
+  2. Stepwise Regression
+  3. Stepwise Backward
+  4. Stepwise Forward
+  5. High Variance Inflation Factor (VIF) , high p-value predictors elimination.
+
+
+## 3.1 Manual elimination
+
+Lets try to fit a multiple linear regression model with TARGET_WINS as the response variable all the other predictors as the explanatory variables except 'TEAM BASERUN CS','TEAM BATTING HBP','TEAM BATTING SO' as they have very low correlation with Wins:
+(Note: Since we do not need INDEX field, We will be removing INDEX data element from the model building)
+
+The coefficients are:
+
+```{r, warning=FALSE, message=FALSE}
+options(stringsAsFactors = FALSE)
+results <- data.frame( character(),  numeric())
+
+#Full Model
+model.manualElimination <- lm(formula = TARGET_WINS ~ . -INDEX -TEAM_BASERUN_CS -TEAM_BATTING_HBP -TEAM_BATTING_SO,data =moneyballTraining)
+
+summary(model.manualElimination)$coefficients[,4] 
+
+ar1 <-  summary(model.manualElimination)$adj.r.squared
+
+results <- rbind(results, c("Manual Elimination", round(ar1 * 100, 2)))
+par(mfrow=c(2, 2))
+graphics::plot(model.manualElimination, main="Manual elimination")
+```
+
+The adjusted r-squared values is `r ar1`
+
+
+##3.2 Stepwise Regression
+
+Here, we will be selecting the predictors based on stepwise regression. 
+
+The coefficients we obtained here are:
+
+```{r, message=FALSE, warning=FALSE}
+fit <- lm(formula = TARGET_WINS ~. -INDEX , data =moneyballTraining)
+
+# Stepwise Regression
+model.step <- stepAIC(fit, direction="both", trace=FALSE)
+summary(model.step)$coefficients[,4] 
+
+ar2 <-  summary(model.step)$adj.r.squared
+
+results <- rbind(results, c("Stepwise Regression", round(ar2 * 100, 2)))
+
+par(mfrow=c(2, 2))
+graphics::plot(model.step, main="Stepwise Regression")
+```
+
+And the adjusted r-squared value is `r ar2`
+
+
+##3.3 Stepwise Backward   
+
+The coefficients we obtained here are:
+
+```{r, message=FALSE, warning=FALSE}
+model.step.backward <- step(fit, direction="backward",trace=FALSE)
+summary(model.step.backward)$coefficients[,4] 
+
+ar3 <-  summary(model.step.backward)$adj.r.squared
+
+results <- rbind(results, c("Stepwise Backward", round(ar3 * 100, 2)))
+
+par(mfrow=c(2, 2))
+graphics::plot(model.step.backward, main="Backward elimination")
+```
+
+The adjusted r-squared value in the stepwise backward model is `r ar3`
+
+##3.4 Stepwise Forward
+
+The coefficients we obtained here are:
+
+```{r}
+forward.null <-lm(TARGET_WINS~ -1,data=moneyballTraining)
+forward.full <-lm(TARGET_WINS~. -INDEX,data=moneyballTraining)
+model.step.forward<- step(forward.null, scope=list(lower=forward.null, upper=forward.full), direction="forward", trace=FALSE)
+
+summary(model.step.forward)$coefficients[,4] 
+ar4 <-  summary(model.step.forward)$adj.r.squared
+
+results <- rbind(results, c("Stepwise Forward", round(ar4 * 100, 2)))
+
+par(mfrow=c(2, 2))
+graphics::plot(model.step.forward, main="Forward Elimination")
+```
+
+The adjusted r-squared value in the stepwise backward model is `r ar4`
+
+##3.5 Remove VIF, and high p value predictors manually.
+
+ In this model we would be removing the multi-collinear predictors - basically removing the excessive correlation among the explanatory variables. And then try removing the high p value predictors ( > 0.05)
+
+ The below is the VIF values, lets get rid of those that has got VIF > 5.
+ 
+```{r, warning=FALSE, message= FALSE}
 #Let's consider ALL the variables ( except INDEX).
 fit1 <- lm(TARGET_WINS ~ . -INDEX, data=moneyballTraining)
-summary(fit1)
 
 #Lets check for Multi-Collinearity - lets find vif value and drop those that has 
 #got high vif (>5)
 vifFit1 <- vif(fit1)
-vifFit1
 
 #sort by descending
-sort(vifFit1, decreasing = T)
-
-#These has got high vif value [ highly correlated results in multicolinearity ]
-#TEAM_BATTING_HR TEAM_PITCHING_HR  TEAM_BATTING_BB TEAM_PITCHING_BB 
-#36.901942        29.744427         6.815457         6.363007
-
-fit2 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB, data=moneyballTraining)
-
-#Lets now review the summary of this model, and look at the p-values now. Lets get rid of the
-#variables with p-value > 0.05
-summary(fit2)
-
-# These are all got p value > 0.05, lets drop these in our next model
-#TEAM_BATTING_3B   3.188e-02  1.879e-02   1.697  0.089971 
-#TEAM_BATTING_SO   5.331e-05  2.521e-03   0.021  0.983129
-#TEAM_BATTING_HBP  1.027e-01  8.655e-02   1.187  0.235449  
-#TEAM_BATTING_2B  -1.584e-02  1.063e-02  -1.490  0.136465 
-
-fit3 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B, data=moneyballTraining)
-
-summary(fit3)
-
-#TEAM_BATTING_SO  -0.0016982  0.0023009  -0.738 0.4606 
-#TEAM_BATTING_HBP  0.1004744  0.0865918   1.160 0.2461
-#TEAM_PITCHING_H  -0.0004844  0.0004140  -1.170 0.2422
-#TEAM_BATTING_2B  -0.0174378  0.0105980  -1.645 0.1001
-
-#Lets remove TEAM_BATTING_SO, TEAM_BATTING_HBP,TEAM_PITCHING_H,TEAM_BATTING_2B
-fit4 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B -TEAM_BATTING_SO -TEAM_BATTING_HBP -TEAM_PITCHING_H -TEAM_BATTING_2B, data=moneyballTraining)
-
-summary(fit4)
-
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('VIF')
+kable(vif.df)
 ```
 
-###3.5.1. RMSE - Root Mean Sqared Error (verification with test data)
+Lets remove *TEAM_BATTING_HR TEAM_PITCHING_HR  TEAM_BATTING_BB TEAM_PITCHING_BB* , these highly corelated, which results in multi-colineary among these variables, lets get rid of these from the model building. 
+
+```{r, warning=FALSE, message=FALSE}
+fit2 <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB, data=moneyballTraining)
+```
+
+These predictors:  *TEAM_BATTING_3B, TEAM_BATTING_2B, TEAM_BATTING_SO, TEAM_BATTING_HBP, TEAM_PITCHING_H, TEAM_PITCHING_SO* has got high p value, so, lets try removing and re-build the model:
+
+Here are the final co-efficients we got:
+```{r, warning=FALSE, message=FALSE}
+model.vif <- lm(TARGET_WINS ~ .-INDEX -TEAM_BATTING_HR -TEAM_PITCHING_HR -TEAM_BATTING_BB -TEAM_PITCHING_BB -TEAM_BATTING_3B -TEAM_BATTING_2B -TEAM_BATTING_SO -TEAM_BATTING_HBP -TEAM_PITCHING_H -TEAM_PITCHING_SO, data=moneyballTraining)
+
+ar5 <-  summary(model.vif)$adj.r.squared
+summary(model.vif)$coefficients[,4] 
+
+results <- rbind(results, c("VIF Elimination", round(ar5 * 100, 2)))
+
+par(mfrow=c(2, 2))
+graphics::plot(model.vif, main="VIF")
+```
+
+The adjusted r-squared value we got from the above model is `r ar5`
+
+# 4. Selection
+
+Lets now check to see how each model performed, by looking at the adjusted r-sqaured, RMSE values.
+
+Here is the adjusted R-Sqaured values from different model above:
+
+```{r}
+colnames(results) <- c("Method", "Adj R Squared")
+kable(results)
+```
+
+
+##4.1. RMSE - Root Mean Sqared Error (verification with test data)
 ```{r}
 #Lets take our model, and apply it on the test dataset.
-predicted.wins <- predict(fit4, newdata = moneyballTest)
+predicted.wins <- predict(model.vif, newdata = moneyballTest)
 
 #Lets calculate the RMSE
 residuals <- moneyballTest$TARGET_WINS - predicted.wins
@@ -341,21 +366,21 @@ ggplot(rmse.df, aes(x=actual, y = predicted)) + geom_point()
 ###3.5.2 Diagnostic plots, check for linearity, normality is justified for residuals ...
 ```{r}
 #Check if linearity in residuals violated
-plot(fit4, which=1)
+plot(model.vif, which=1)
 
 #Observation: the red line is about flat, which indicates the linearity in residuals is good.
 
 
 #Is residual variance is constant [ assumption of homo scedasticity is fine or not ]
-plot(fit4, which=3)
+plot(model.vif, which=3)
 
 
 #For normality of residuals
-plot(fit4, which=2) #if most of the resids are on the straight line we are good to go.
+plot(model.vif, which=2) #if most of the resids are on the straight line we are good to go.
 
 #Lets check normality via ggplot for specific data element
 # say, TEAM_BATTING_HR
-d = data.frame(x=fit4$residuals, y = moneyballTraining$TEAM_BATTING_HR)
+d = data.frame(x=model.vif$residuals, y = moneyballTraining$TEAM_BATTING_HR)
 ggplot(d, aes(x,y)) + geom_point() + geom_smooth()
 
 ggplot(d, aes(x)) + geom_histogram()
@@ -363,7 +388,7 @@ ggplot(d, aes(x)) + geom_histogram()
 ggplot(d, aes(x)) + geom_density(color="red") + stat_function(fun=dnorm, args=list(mean=mean(d$x), sd=sd(d$x)), color="dark green") #residuals are normal.
 ```
 
-# 4. Selection
+# 5. Evaluation
 ```{r}
 moneyballEvaluation <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW1/moneyball-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
@@ -377,7 +402,7 @@ for(i in 1:ncol(moneyballEvaluation)){
 
 apply(moneyballEvaluation, 2, function(x) sum(is.na(x)))
 
-eval.wins <- predict(fit4, newdata = moneyballEvaluation)
+eval.wins <- predict(model.vif, newdata = moneyballEvaluation)
 
 head(eval.wins)
 ```
