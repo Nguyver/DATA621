@@ -1,0 +1,11 @@
+---
+title: "Critical Thinking Group 4 - HW2"
+author: "Sreejaya, Suman, Vuthy"
+date: "September 27, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
