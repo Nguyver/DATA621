@@ -10,8 +10,32 @@ knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
+
+ 1. Download the classification output data set
 ```{r}
 classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+```
 
-?table
+2. The data set has three key columns we will use:
+
+* class: the actual class for the observations
+* score.class: the predicted class for the observations (based on a threshold of 0.5)
+* scored.probability: the predicted probability o=f success for the observation
+
+Use the table() function to get the raw confusion matris for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The Columns?  
+```{r}
+class.df <- classification.orig
+class.df$class <- factor(class.df$class)
+class.df$scored.class <- factor(class.df$scored.class)
+
+summary(class.df)
+table(class.df$class, class.df$scored.class)
+
+# Verifying Table results
+sum(class.df$class == class.df$scored.class & class.df$class ==1)
+sum(class.df$class != class.df$scored.class & class.df$class ==0)
+
+sum(class.df$class == class.df$scored.class & class.df$class ==0)
+sum(class.df$class != class.df$scored.class & class.df$class ==1)
+
 ```
