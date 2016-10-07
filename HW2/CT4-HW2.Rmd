@@ -30,6 +30,7 @@ class.df <- classification.orig
 class.df$class <- factor(class.df$class)
 class.df$scored.class <- factor(class.df$scored.class)
 
+glimpse(class.df)
 summary(class.df)
 table(class.df$class, class.df$scored.class)
 
@@ -110,6 +111,8 @@ sensitivity(class.df)
 $$Specificity = \frac{TN}{TN+FP}$$
 ```{r}
 specificity <- function(data, actual.idx=9, predict.idx=10){
+  
+  
   confusion <- table(data[,actual.idx], data[,predict.idx])
   
   value <- confusion[1,1]/(confusion[1,1]+confusion[1,2])
@@ -142,7 +145,41 @@ f1Score(class.df)
 10. Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that  includes  the  plot  of  the  ROC  curve  and  a  vector  that  contains  the  calculated  area  under  the  curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
 
 ```{r}
+library(ggplot2)
 
+getRoCData <- function(data)
+{
+  rocResults <- data.frame(Threshold=c(), Sn=c(), Sp=c())
+  
+  thresholds <- seq(0, 1, by=0.01)
+  for(threshold in thresholds)
+  {
+    data <- data %>% mutate(predicted = as.numeric(scored.probability >= threshold))
+    data$predicted  <- factor( data$predicted , levels=c(0,1) )
+    
+    Sn <- sensitivity(data, actual.idx =  9, predict.idx =  12)
+    Sp <- specificity(data, actual.idx =  9, predict.idx =  12)
+    
+    rocResults <- rbind(rocResults, data.frame(Threshold=c(threshold), Sn=c(Sn), Sp=c(Sp)))
+  }
+  
+  rocPlot <- ggplot(rocResults, aes(x=1-Sp, y=Sn) ) + geom_line(size = 1, alpha = 0.6) +
+    geom_point(data=rocResults[rocResults$Threshold == 0.5,], 
+               aes(x=1-Sp, y=Sn), colour="orange") +
+    geom_abline(slope=1, intercept=0, colour="blue", size=0.50) +
+          xlim(0, 1) + ylim(0, 1) +
+    labs(title="ROC Curve",
+         x = "False Positive Rate ( 1 - Sp) ",
+         y = "True Positive Rate (Sn)")
+
+  #TODO - How to calculate the area under the curve ?
+  auc <- c()
+  results <- list(rocPlot, auc)
+
+  return(results)
+}
+
+getRoCData(class.df)
 ```
 
 11. Use your **created R function** and the provided classifcation output data set to produce all of the classification metrics discussed above.
