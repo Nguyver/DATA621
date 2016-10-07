@@ -23,6 +23,8 @@ classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA
 - **scored.probability**: the predicted probability o=f success for the observation
 
 Use the table() function to get the raw confusion matris for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The Columns?  
+
+In our case, the columns are the predictions and the rows are the actuals.  
 ```{r}
 class.df <- classification.orig
 class.df$class <- factor(class.df$class)
@@ -32,49 +34,106 @@ summary(class.df)
 table(class.df$class, class.df$scored.class)
 
 # Verifying Table results
-sum(class.df$class == class.df$scored.class & class.df$class ==1)
-sum(class.df$class != class.df$scored.class & class.df$class ==0)
+#               = Predict-Actual
+#True Positive  = 1-1
+#False Positive = 1-0
+#True Negative  = 0-0
+#False Negative = 0-1
+sum(class.df$class == class.df$scored.class & class.df$class ==1) #TP (2,2)
+sum(class.df$class != class.df$scored.class & class.df$class ==0) #FN (1,2)
 
-sum(class.df$class == class.df$scored.class & class.df$class ==0)
-sum(class.df$class != class.df$scored.class & class.df$class ==1)
+sum(class.df$class == class.df$scored.class & class.df$class ==0) #TN (1,1)
+sum(class.df$class != class.df$scored.class & class.df$class ==1) #FP (2,1)
+
+test[2,2]
 ```
 
 3. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the accuracy of the predictions.
 $$Accuracy = \frac{TP+TN}{TP+FP+TN+FN}$$
 ```{r}
+accuracy <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- (confusion[2,2]+confusion[1,1])/(confusion[2,2]+confusion[2,1]+confusion[1,1]+confusion[1,2])
+  
+  return(value)
+}
 
+#Example
+accuracy(class.df,9,10)
 ```
 
 4. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the classification error rate of the predictions.
 $$Classification Error Rate = \frac{FP+FN}{TP+FP+TN+FN}$$
 Verify that you get an accuracy and error rate that sums to one.
-```{r}
 
+```{r}
+classErrorRate <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- (confusion[1,2]+confusion[2,1])/(confusion[2,2]+confusion[2,1]+confusion[1,1]+confusion[1,2])
+  
+  return(value)
+}
+
+classErrorRate(class.df)+accuracy(class.df)
 ```
 
 5. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the precision of the predictions.
 $$Precision = \frac{TP}{TP+FP}$$
 
 ```{r}
+precision <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- confusion[2,2]/(confusion[2,2]+confusion[1,2])
+  
+  return(value)
+}
 
+precision(class.df)
 ```
 
 6. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the sensitivity of the predictions. Sensitivity is also known as recall.
 $$Sensitivity = \frac{TP}{TP+FN}$$
 ```{r}
+sensitivity <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- confusion[2,2]/(confusion[2,2]+confusion[2,1])
+  
+  return(value)
+}
 
+sensitivity(class.df)
 ```
 
 7. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the specificity of the predictions.
 $$Specificity = \frac{TN}{TN+FP}$$
 ```{r}
+specificity <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- confusion[1,1]/(confusion[1,1]+confusion[1,2])
+  
+  return(value)
+}
 
+specificity(class.df)
 ```
 
 8. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the F1 score of the predictions.
 $$F1 Score = \frac{2 X Precision X Sensitivity}{Precision + Sensitivity}$$
 ```{r}
+f1Score <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- (2*precision(data)*sensitivity(data))/(precision(data)+sensitivity(data))
+  
+  return(value)
+}
 
+f1Score(class.df)
 ```
 
 9. Before we move on, let's consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1. (Hint: If 0 < a < 1 and 0 < b < 1 then ab < a.)
