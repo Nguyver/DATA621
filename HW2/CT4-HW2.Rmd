@@ -6,8 +6,8 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+#knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
 
 
@@ -33,19 +33,17 @@ class.df$scored.class <- factor(class.df$scored.class)
 summary(class.df)
 table(class.df$class, class.df$scored.class)
 
-# Verifying Table results
-#               = Predict-Actual
-#True Positive  = 1-1
-#False Positive = 1-0
-#True Negative  = 0-0
-#False Negative = 0-1
+# Verifying Table results  
+#               = Predict-Actual  
+#True Positive  = 1-1  
+#False Positive = 1-0  
+#True Negative  = 0-0  
+#False Negative = 0-1  
 sum(class.df$class == class.df$scored.class & class.df$class ==1) #TP (2,2)
 sum(class.df$class != class.df$scored.class & class.df$class ==0) #FN (1,2)
 
 sum(class.df$class == class.df$scored.class & class.df$class ==0) #TN (1,1)
 sum(class.df$class != class.df$scored.class & class.df$class ==1) #FP (2,1)
-
-test[2,2]
 ```
 
 3. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the accuracy of the predictions.
