@@ -9,3 +9,9 @@ output: pdf_document
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
+
+```{r}
+classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+?table
+```
