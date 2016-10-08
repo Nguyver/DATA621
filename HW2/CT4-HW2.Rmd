@@ -11,6 +11,15 @@ knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
 
 
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(e1071)
+library(caret)
+library(pROC)
+```
+
  1. Download the classification output data set
 ```{r}
 classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
@@ -153,32 +162,23 @@ f1Score(class.df)
 10. Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that  includes  the  plot  of  the  ROC  curve  and  a  vector  that  contains  the  calculated  area  under  the  curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
 
 ```{r}
-library(ggplot2)
-library(dplyr)
-
-
 getRoCData <- function(data)
 {
-  
   rocResults <- data.frame(Threshold=c(), Sn=c(), Sp=c())
-  Sn.vec <-c()
-  Sp.vec <-c()
+  
   thresholds <- seq(0, 1, by=0.01)
   for(threshold in thresholds)
   {
-   
     data <- data %>% mutate(predicted = as.numeric(scored.probability >= threshold))
     data$predicted  <- factor( data$predicted , levels=c(0,1) )
     
     Sn <- sensitivity(data, actual.idx =  9, predict.idx =  12)
     Sp <- specificity(data, actual.idx =  9, predict.idx =  12)
-    Sn.vec <-append(Sn,Sn.vec)
-    Sp.vec <-append(Sp,Sp.vec)
-    
-    #FPR vs. TPR
     
     rocResults <- rbind(rocResults, data.frame(Threshold=c(threshold), Sn=c(Sn), Sp=c(Sp)))
   }
+  
+  auc <- cumsum(rocResults$Sn - (1-rocResults$Sp))*0.01
   
   rocPlot <- ggplot(rocResults, aes(x=1-Sp, y=Sn) ) + geom_line(size = 1, alpha = 0.6) +
     geom_point(data=rocResults[rocResults$Threshold == 0.5,], 
@@ -189,48 +189,78 @@ getRoCData <- function(data)
          x = "False Positive Rate ( 1 - Sp) ",
          y = "True Positive Rate (Sn)")
 
-  #TODO - How to calculate the area under the curve ?
-  fpr <- 1-Sp.vec
-  auc <- cumsum(Sn.vec-fpr)*0.01
-  print(auc)
-  
-  # or
-  height = (Sn.vec[-1]+Sn.vec[-length(Sn.vec)])/2
-  width = diff(fpr) # = diff(rev(fpr))
-  auc <- sum(height*width)
-  #auc <- c()
-  results <- list(rocPlot, auc)
+  results <- list(plot = rocPlot, auc = auc)
 
   return(results)
 }
 
-getRoCData(class.df)
+result <- getRoCData(class.df)
+result$plot
+result$auc
 ```
 
 11. Use your **created R function** and the provided classifcation output data set to produce all of the classification metrics discussed above.
 ```{r}
+accuracy <- accuracy(class.df)
+Sn <- sensitivity(class.df)
+Sp <- specificity(class.df)
+ClsErrRate <- classErrorRate(class.df)
+f1 <- f1Score(class.df)
+precsn <- precision(class.df)
 
+metrics <- data.frame(Metric=c(), Value=c())
+metrics <- rbind(metrics, data.frame(Metric = "Accuracy", Value = round(accuracy,4)))
+metrics <- rbind(metrics, data.frame(Metric = "Sn(True Positive Rate)", Value = round(Sn,4)))
+metrics <- rbind(metrics, data.frame(Metric = "Sp(True Negative Rate)", Value = round(Sp,4)))
+metrics <- rbind(metrics, data.frame(Metric = "ClassErrorRate", Value = round(ClsErrRate,4)))
+metrics <- rbind(metrics, data.frame(Metric = "F1Score", Value = round(f1,4)))
+metrics <- rbind(metrics, data.frame(Metric = "Precision", Value = round(precsn,4)))
+
+kable(metrics)
 ```
 
 12. Investigate the **caret** package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions?
-```{r}
 
+**Confuction Matrix**
+```{r}
+confusionMatrix(class.df$scored.class, class.df$class, positive = "1")
+```
+
+**Sensitivity**
+```{r, warning=FALSE, message=FALSE}
+round(caret::sensitivity(factor(class.df$scored.class), 
+            factor(class.df$class), 
+            positive="1"), 4)
+```
+
+**Specificity**
+```{r, warning=FALSE, message=FALSE}
+round(caret::specificity(factor(class.df$scored.class), 
+                   factor(class.df$class), 
+                   negative="0"),4)
+```
+
+**lift**
+```{r, warning=FALSE, message=FALSE}
+(liftResult <- lift(data=class.df, factor(class) ~ scored.probability))
+graphics::plot(liftResult, plot = "gain", title(main="Sensitivity Vs Support"))
+graphics::plot(liftResult, plot = "lift")
 ```
 
 13. Investate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
 ```{r}
- 
- library(pROC)
-  roc <- roc(factor(class)~scored.probability,data=,class.df, plot=TRUE, ci=TRUE)
- plot(roc)
- auc(factor(class)~scored.probability,class.df)
+(roc <- roc(factor(class)~scored.probability,data=,class.df, plot=FALSE, ci=TRUE))
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+auc(factor(class)~scored.probability,class.df)
  
  ##discussion??
  #x axis should be  1- specificity
 
 ```
+The RoC curve is very similar to our RoC plot drawn using the getRoCData() function above.
 
+Why is this below code ?, we do not need the below
 ```{r}
 true_Y = class.df$class
 probs = class.df$scored.probability
