@@ -22,10 +22,11 @@ classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA
 - **score.class**: the predicted class for the observations (based on a threshold of 0.5)
 - **scored.probability**: the predicted probability o=f success for the observation
 
-Use the table() function to get the raw confusion matris for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The Columns?  
+Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The Columns?  
 
 In our case, the columns are the predictions and the rows are the actuals.  
 ```{r}
+library(dplyr)
 class.df <- classification.orig
 class.df$class <- factor(class.df$class)
 class.df$scored.class <- factor(class.df$scored.class)
@@ -33,6 +34,7 @@ class.df$scored.class <- factor(class.df$scored.class)
 glimpse(class.df)
 summary(class.df)
 table(class.df$class, class.df$scored.class)
+# Rows represent Actual class and the columns represent Predicted class.
 
 # Verifying Table results  
 #               = Predict-Actual  
@@ -49,6 +51,7 @@ sum(class.df$class != class.df$scored.class & class.df$class ==1) #FP (2,1)
 
 3. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the accuracy of the predictions.
 $$Accuracy = \frac{TP+TN}{TP+FP+TN+FN}$$
+ Accuracy: Overall, how often is the classifier correct?
 ```{r}
 accuracy <- function(data, actual.idx=9, predict.idx=10){
   confusion <- table(data[,actual.idx], data[,predict.idx])
@@ -66,6 +69,7 @@ accuracy(class.df,9,10)
 $$Classification Error Rate = \frac{FP+FN}{TP+FP+TN+FN}$$
 Verify that you get an accuracy and error rate that sums to one.
 
+Error Rate: Overall, how often is it wrong?
 ```{r}
 classErrorRate <- function(data, actual.idx=9, predict.idx=10){
   confusion <- table(data[,actual.idx], data[,predict.idx])
@@ -139,6 +143,10 @@ f1Score(class.df)
 
 9. Before we move on, let's consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1. (Hint: If 0 < a < 1 and 0 < b < 1 then ab < a.)
 ```{r}
+#F1 score reaches its best value at 1 and worst at 0.
+#since both presition and sensitivity are in between 0 and 1
+# we know 0 < p*s <=1 and 2*p*s <=p +s (maximum value p and s can have is 1 )
+# so 2*p*s/p +s can have values in between 0 and 1
 
 ```
 
@@ -146,19 +154,28 @@ f1Score(class.df)
 
 ```{r}
 library(ggplot2)
+library(dplyr)
+
 
 getRoCData <- function(data)
 {
-  rocResults <- data.frame(Threshold=c(), Sn=c(), Sp=c())
   
+  rocResults <- data.frame(Threshold=c(), Sn=c(), Sp=c())
+  Sn.vec <-c()
+  Sp.vec <-c()
   thresholds <- seq(0, 1, by=0.01)
   for(threshold in thresholds)
   {
+   
     data <- data %>% mutate(predicted = as.numeric(scored.probability >= threshold))
     data$predicted  <- factor( data$predicted , levels=c(0,1) )
     
     Sn <- sensitivity(data, actual.idx =  9, predict.idx =  12)
     Sp <- specificity(data, actual.idx =  9, predict.idx =  12)
+    Sn.vec <-append(Sn,Sn.vec)
+    Sp.vec <-append(Sp,Sp.vec)
+    
+    #FPR vs. TPR
     
     rocResults <- rbind(rocResults, data.frame(Threshold=c(threshold), Sn=c(Sn), Sp=c(Sp)))
   }
@@ -173,7 +190,15 @@ getRoCData <- function(data)
          y = "True Positive Rate (Sn)")
 
   #TODO - How to calculate the area under the curve ?
-  auc <- c()
+  fpr <- 1-Sp.vec
+  auc <- cumsum(Sn.vec-fpr)*0.01
+  print(auc)
+  
+  # or
+  height = (Sn.vec[-1]+Sn.vec[-length(Sn.vec)])/2
+  width = diff(fpr) # = diff(rev(fpr))
+  auc <- sum(height*width)
+  #auc <- c()
   results <- list(rocPlot, auc)
 
   return(results)
@@ -197,3 +222,5 @@ getRoCData(class.df)
 ```{r}
 
 ```
+
+
