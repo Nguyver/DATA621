@@ -6,12 +6,12 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-#knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
 
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r}
 library(dplyr)
 library(ggplot2)
 library(knitr)
@@ -20,8 +20,158 @@ library(caret)
 library(pROC)
 ```
 
-###1. Download the classification output data set
+## Overview
+In this assignment, we will work through various classification metrics. We will implement the various functions to calculate the metrics as well as explore functions from various packages that perform equivalent calculations. We will also generate graphical outputs used to evaluate the classification models.  
+
+**Dataset**  
+[Classification Output](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv)  
+
+## Data Exploration
+The *classification output* dataset contains 181 observations and 11 variables. All 11 variables are numeric including the 3 variables we are interested in:
+
+- **class**: the actual class for the observations
+- **score.class**: the predicted class for the observations (based on a threshold of 0.5)
+- **scored.probability**: the predicted probability of success for the observation
+  
 ```{r}
+classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+```
+
+```{r}
+glimpse(classification.orig)
+```
+## Data Preparation
+
+A confusion matrix is typically used to describe the performance of a classification model. The matrix contains 2 rows and 2 columns that reports the number of true negative, false negative, false positive and true positive. The values in the dataset needs to be factors in order to be classified using the table() function.  
+
+Since all the variables in the dataset were numeric, *class* and *score.class* variables were converted to factors.
+
+```{r}
+class.df <- classification.orig
+
+#Convert numbers to factors
+class.df$class <- factor(class.df$class)
+class.df$scored.class <- factor(class.df$scored.class)
+```
+
+```{r}
+glimpse(class.df)
+summary(class.df[,9:11])
+```
+
+The resulting confusion matrix where rows represents the Actual class and columns represent the predicted class.
+```{r echo=FALSE}
+cnf.mtx <- table(class.df$class, class.df$scored.class)
+knitr::kable(cnf.mtx, caption="Confusion Matrix")
+```
+
+## Classification Metrics
+Please see Appendix (Appendix section) for custom implementation details.
+
+  - Accuracy = How often is the classifier correct? $$\frac{TP+TN}{TP+FP+TN+FN}$$
+  - Classification Error Rate = How often is the classifier incorrect? $$\frac{FP+FN}{TP+FP+TN+FN}$$
+  - Precision = When the classifier predicts yes, how often is it correct? $$\frac{TP}{TP+FP}$$
+  - Sensitivity = When the actual value is yes, how often does it predict yes?$$\frac{TP}{TP+FN}$$
+  - Specificity = When the actual value is no, how often does it predict no? $$\frac{TN}{TN+FP}$$
+  - F1 Score = Weighted average of the sensitivity and precision $$\frac{2 X Precision X Sensitivity}{Precision + Sensitivity}$$
+  
+Metrics definition sourced from **[Data School](http://www.dataschool.io/simple-guide-to-confusion-matrix-terminology/)**
+```{r}
+accuracy <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4; 
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- (confusion[TP]+confusion[TN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
+  
+  return(value)
+}
+
+classErrorRate <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- (confusion[FP]+confusion[FN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
+  
+  return(value)
+}
+
+precision <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TP]/(confusion[TP]+confusion[FP])
+  
+  return(value)
+}
+
+sensitivity <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TP]/(confusion[TP]+confusion[FN])
+  
+  return(value)
+}
+
+specificity <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TN]/(confusion[TN]+confusion[FP])
+  
+  return(value)
+}
+
+f1Score <- function(data, actual.idx=9, predict.idx=10){
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  
+  value <- (2*precision(data)*sensitivity(data))/(precision(data)+sensitivity(data))
+  
+  return(value)
+}
+```
+
+```{r}
+accuracy <- accuracy(class.df)
+Sn <- sensitivity(class.df)
+Sp <- specificity(class.df)
+ClsErrRate <- classErrorRate(class.df)
+f1 <- f1Score(class.df)
+precsn <- precision(class.df)
+
+metrics <- data.frame(Metric=c(), Value=c())
+metrics <- rbind(metrics, data.frame(Metric = "Accuracy", Value = round(accuracy,4)))
+metrics <- rbind(metrics, data.frame(Metric = "Sn(True Positive Rate)", Value = round(Sn,4)))
+metrics <- rbind(metrics, data.frame(Metric = "Sp(True Negative Rate)", Value = round(Sp,4)))
+metrics <- rbind(metrics, data.frame(Metric = "ClassErrorRate", Value = round(ClsErrRate,4)))
+metrics <- rbind(metrics, data.frame(Metric = "F1Score", Value = round(f1,4)))
+metrics <- rbind(metrics, data.frame(Metric = "Precision", Value = round(precsn,4)))
+
+kable(metrics, caption="Confusion Matrix Metrics using custom functions")
+```
+
+## Graphical Evaluation
+
+## Appendix 
+
+
+###1. Download the classification output data set
+```{r echo=FALSE}
 classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 ```
 
@@ -29,19 +179,24 @@ classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA
 
 - **class**: the actual class for the observations
 - **score.class**: the predicted class for the observations (based on a threshold of 0.5)
-- **scored.probability**: the predicted probability o=f success for the observation
+- **scored.probability**: the predicted probability of success for the observation
 
 Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The Columns?  
 
 In our case, the columns are the predictions and the rows are the actuals.  
 ```{r, warning=FALSE, message=FALSE}
 class.df <- classification.orig
+
+#Convert numbers to factors
 class.df$class <- factor(class.df$class)
 class.df$scored.class <- factor(class.df$scored.class)
 
 glimpse(class.df)
 summary(class.df)
-knitr::kable(table(class.df$class, class.df$scored.class))
+
+cnf.mtx <- table(class.df$class, class.df$scored.class)
+knitr::kable(cnf.mtx)
+
 # Rows represent Actual class and the columns represent Predicted class.
 
 # Verifying Table results  
@@ -50,11 +205,11 @@ knitr::kable(table(class.df$class, class.df$scored.class))
 #False Positive = 1-0  
 #True Negative  = 0-0  
 #False Negative = 0-1  
-sum(class.df$class == class.df$scored.class & class.df$class ==1) #TP (2,2)
-sum(class.df$class != class.df$scored.class & class.df$class ==0) #FN (1,2)
+#sum(class.df$class == class.df$scored.class & class.df$class ==1) #TP (2,2)
+#sum(class.df$class != class.df$scored.class & class.df$class ==0) #FN (1,2)
 
-sum(class.df$class == class.df$scored.class & class.df$class ==0) #TN (1,1)
-sum(class.df$class != class.df$scored.class & class.df$class ==1) #FP (2,1)
+#sum(class.df$class == class.df$scored.class & class.df$class ==0) #TN (1,1)
+#sum(class.df$class != class.df$scored.class & class.df$class ==1) #FP (2,1)
 ```
 
 ###3. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the accuracy of the predictions.
@@ -62,9 +217,13 @@ $$Accuracy = \frac{TP+TN}{TP+FP+TN+FN}$$
  Accuracy: Overall, how often is the classifier correct?
 ```{r}
 accuracy <- function(data, actual.idx=9, predict.idx=10){
-  confusion <- table(data[,actual.idx], data[,predict.idx])
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
   
-  value <- (confusion[2,2]+confusion[1,1])/(confusion[2,2]+confusion[2,1]+confusion[1,1]+confusion[1,2])
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- (confusion[TP]+confusion[TN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
   
   return(value)
 }
@@ -80,9 +239,13 @@ Verify that you get an accuracy and error rate that sums to one.
 Error Rate: Overall, how often is it wrong?
 ```{r}
 classErrorRate <- function(data, actual.idx=9, predict.idx=10){
-  confusion <- table(data[,actual.idx], data[,predict.idx])
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
   
-  value <- (confusion[1,2]+confusion[2,1])/(confusion[2,2]+confusion[2,1]+confusion[1,1]+confusion[1,2])
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- (confusion[FP]+confusion[FN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
   
   return(value)
 }
@@ -95,9 +258,13 @@ $$Precision = \frac{TP}{TP+FP}$$
 
 ```{r}
 precision <- function(data, actual.idx=9, predict.idx=10){
-  confusion <- table(data[,actual.idx], data[,predict.idx])
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
   
-  value <- confusion[2,2]/(confusion[2,2]+confusion[1,2])
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TP]/(confusion[TP]+confusion[FP])
   
   return(value)
 }
@@ -109,9 +276,13 @@ precision(class.df)
 $$Sensitivity = \frac{TP}{TP+FN}$$
 ```{r}
 sensitivity <- function(data, actual.idx=9, predict.idx=10){
-  confusion <- table(data[,actual.idx], data[,predict.idx])
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
   
-  value <- confusion[2,2]/(confusion[2,2]+confusion[2,1])
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TP]/(confusion[TP]+confusion[FN])
   
   return(value)
 }
@@ -123,11 +294,13 @@ sensitivity(class.df)
 $$Specificity = \frac{TN}{TN+FP}$$
 ```{r}
 specificity <- function(data, actual.idx=9, predict.idx=10){
-  
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
   
   confusion <- table(data[,actual.idx], data[,predict.idx])
-  
-  value <- confusion[1,1]/(confusion[1,1]+confusion[1,2])
+  value <- confusion[TN]/(confusion[TN]+confusion[FP])
   
   return(value)
 }
@@ -255,5 +428,4 @@ auc(factor(class)~scored.probability,class.df)
 
 ```
 The RoC curve is very similar to our RoC plot drawn using the getRoCData() function above.
-
 
