@@ -76,6 +76,7 @@ Please see Appendix (Appendix section) for custom implementation details.
   - F1 Score = Weighted average of the sensitivity and precision $$\frac{2 X Precision X Sensitivity}{Precision + Sensitivity}$$
   
 Metrics definition sourced from **[Data School](http://www.dataschool.io/simple-guide-to-confusion-matrix-terminology/)**
+
 ```{r}
 accuracy <- function(data, actual.idx=9, predict.idx=10){
   TP <- 4; 
@@ -165,13 +166,72 @@ metrics <- rbind(metrics, data.frame(Metric = "Precision", Value = round(precsn,
 kable(metrics, caption="Confusion Matrix Metrics using custom functions")
 ```
 
+
+  Before we move on, let's consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1.
+
+ F1 score reaches its best value at 1 and worst at 0.since both precision and sensitivity are in between 0 and 1, we know $$0 < p*s <=1$$ and $$ 2*p*s <= p + s$$ (maximum value p and s can have is 1 ), so $$ 2*p*s / p + s$$ can have values in between 0 and 1.
+ 
 ## Graphical Evaluation
+
+**ROC Curve**
+
+ We will use the *ROC Curve* to characterize the sensitivity/specificity tradeoffs for our binary classifier (class in our example) . We will have a series of threshold levels (a.k.a Cut-Offs)  between zero and one in inrements of 0.01, and then with the help of the probability column (scored.probability) we will find out the sensitivity and specificity at each of the threshold levels. Basically, the cases with 'scored.probability' equal to or above the 'threshold' are classified as positive,and the ones below the threshold are classified as negative.So, different thresholds give different levels of sensitivity and specificity. 
+ 
+A high threshold is generally results in labelling more negative cases and low threshold produces more postive labels. 
+ 
+And the *ROC Curve* plots the **true positive rate against the false positive rate**.
+
+Here is the RoC Curve along with few threshold rows from our custom R function **getRoCData**:
+
+
+```{r}
+getRoCData <- function(data)
+{
+  rocResults <- data.frame(Threshold=c(), Sn=c(), Sp=c())
+  
+  thresholds <- seq(0, 1, by=0.01)
+  for(threshold in thresholds)
+  {
+    data <- data %>% mutate(predicted = as.numeric(scored.probability >= threshold))
+    data$predicted  <- factor( data$predicted , levels=c(0,1) )
+    
+    Sn <- sensitivity(data, actual.idx =  9, predict.idx =  12)
+    Sp <- specificity(data, actual.idx =  9, predict.idx =  12)
+    
+    rocResults <- rbind(rocResults, data.frame(Threshold=c(threshold), Sn=c(Sn), Sp=c(Sp)))
+  }
+  
+  auc <- cumsum(rocResults$Sn - (1-rocResults$Sp))*0.01
+ 
+  rocPlot <- ggplot(rocResults, aes(x=1-Sp, y=Sn) ) + geom_line(size = 1, alpha = 0.5) +
+    geom_point(data=rocResults[rocResults$Threshold == 0.5,], 
+               aes(x=1-Sp, y=Sn), colour="orange") +
+    geom_abline(slope=1, intercept=0, colour="blue", size=0.50) +
+          xlim(0, 1) + ylim(0, 1) +
+    labs(title="ROC Curve",
+         x = "False Positive Rate ( 1 - Sp) ",
+         y = "True Positive Rate (Sn)")
+
+  results <- list(rocResults = rocResults, plot = rocPlot, auc = auc)
+
+  return(results)
+}
+
+result <- getRoCData(class.df)
+knitr::kable(head(result$rocResults,20))
+result$plot
+result$auc
+```
+
+
+Our RoC curve follows the left-hand border and then the top border of the ROC space, so it indicates a good test.
+
 
 ## Appendix 
 
 
 ###1. Download the classification output data set
-```{r echo=FALSE}
+```{r, eval=FALSE, echo=TRUE}
 classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 ```
 
@@ -184,7 +244,7 @@ classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA
 Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand the output. In particular, do the rows represent the actual or predicted class? The Columns?  
 
 In our case, the columns are the predictions and the rows are the actuals.  
-```{r, warning=FALSE, message=FALSE}
+```{r, eval=FALSE, echo=TRUE}
 class.df <- classification.orig
 
 #Convert numbers to factors
@@ -215,7 +275,7 @@ knitr::kable(cnf.mtx)
 ###3. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the accuracy of the predictions.
 $$Accuracy = \frac{TP+TN}{TP+FP+TN+FN}$$
  Accuracy: Overall, how often is the classifier correct?
-```{r}
+```{r, eval=FALSE}
 accuracy <- function(data, actual.idx=9, predict.idx=10){
   TP <- 4
   TN <- 1
@@ -237,7 +297,7 @@ $$Classification Error Rate = \frac{FP+FN}{TP+FP+TN+FN}$$
 Verify that you get an accuracy and error rate that sums to one.
 
 Error Rate: Overall, how often is it wrong?
-```{r}
+```{r, eval=FALSE}
 classErrorRate <- function(data, actual.idx=9, predict.idx=10){
   TP <- 4
   TN <- 1
@@ -256,7 +316,7 @@ classErrorRate(class.df)+accuracy(class.df)
 ###5. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the precision of the predictions.
 $$Precision = \frac{TP}{TP+FP}$$
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 precision <- function(data, actual.idx=9, predict.idx=10){
   TP <- 4
   TN <- 1
@@ -274,7 +334,7 @@ precision(class.df)
 
 ###6. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the sensitivity of the predictions. Sensitivity is also known as recall.
 $$Sensitivity = \frac{TP}{TP+FN}$$
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 sensitivity <- function(data, actual.idx=9, predict.idx=10){
   TP <- 4
   TN <- 1
@@ -292,7 +352,7 @@ sensitivity(class.df)
 
 ###7. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the specificity of the predictions.
 $$Specificity = \frac{TN}{TN+FP}$$
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 specificity <- function(data, actual.idx=9, predict.idx=10){
   TP <- 4
   TN <- 1
@@ -310,7 +370,7 @@ specificity(class.df)
 
 ###8. Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the F1 score of the predictions.
 $$F1 Score = \frac{2 X Precision X Sensitivity}{Precision + Sensitivity}$$
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 f1Score <- function(data, actual.idx=9, predict.idx=10){
   confusion <- table(data[,actual.idx], data[,predict.idx])
   
@@ -333,7 +393,7 @@ f1Score(class.df)
 
 ###10. Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that  includes  the  plot  of  the  ROC  curve  and  a  vector  that  contains  the  calculated  area  under  the  curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 getRoCData <- function(data)
 {
   rocResults <- data.frame(Threshold=c(), Sn=c(), Sp=c())
@@ -372,7 +432,7 @@ result$auc
 ```
 
 ###11. Use your **created R function** and the provided classifcation output data set to produce all of the classification metrics discussed above.
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 accuracy <- accuracy(class.df)
 Sn <- sensitivity(class.df)
 Sp <- specificity(class.df)
@@ -394,12 +454,12 @@ kable(metrics)
 ###12. Investigate the **caret** package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions?
 
 **Confusion Matrix**
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 confusionMatrix(class.df$scored.class, class.df$class, positive = "1")
 ```
 
 **Sensitivity**
-```{r, warning=FALSE, message=FALSE}
+```{r, eval=FALSE, echo=TRUE}
 round(caret::sensitivity(factor(class.df$scored.class), 
             factor(class.df$class), 
             positive="1"), 4)
@@ -413,7 +473,7 @@ round(caret::specificity(factor(class.df$scored.class),
 ```
 
 **lift**
-```{r, warning=FALSE, message=FALSE}
+```{r, eval=FALSE, echo=TRUE}
 (liftResult <- lift(data=class.df, factor(class) ~ scored.probability))
 graphics::plot(liftResult, plot = "gain", title(main="Sensitivity Vs Support"))
 graphics::plot(liftResult, plot = "lift")
@@ -421,7 +481,7 @@ graphics::plot(liftResult, plot = "lift")
 
 ###13. Investate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
-```{r}
+```{r, eval=FALSE, echo=TRUE, options(width = 80)}
 (roc <- roc(factor(class)~scored.probability,data=,class.df, plot=FALSE, ci=TRUE))
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
 auc(factor(class)~scored.probability,class.df)
