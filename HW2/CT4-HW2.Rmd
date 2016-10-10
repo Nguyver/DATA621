@@ -166,6 +166,25 @@ metrics <- rbind(metrics, data.frame(Metric = "Precision", Value = round(precsn,
 kable(metrics, caption="Confusion Matrix Metrics using custom functions")
 ```
 
+**Confusion Matrix**
+```{r,  eval=TRUE,echo=TRUE}
+confusionMatrix(class.df$scored.class, class.df$class, positive = "1")
+```
+
+**Sensitivity**
+```{r, eval=TRUE, echo=TRUE}
+round(caret::sensitivity(factor(class.df$scored.class), 
+            factor(class.df$class), 
+            positive="1"), 4)
+```
+
+**Specificity**
+```{r,eval=TRUE,echo=TRUE, warning=FALSE, message=FALSE}
+round(caret::specificity(factor(class.df$scored.class), 
+                   factor(class.df$class), 
+                   negative="0"),4)
+```
+
 We compared the caret confusionmatrix with the one we created; all the measures are matched with the manually created one. Specificity and sensitivity are also same as we calculated.
 
 
