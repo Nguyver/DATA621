@@ -166,27 +166,6 @@ metrics <- rbind(metrics, data.frame(Metric = "Precision", Value = round(precsn,
 kable(metrics, caption="Confusion Matrix Metrics using custom functions")
 ```
 
-**Confusion Matrix**
-```{r,  eval=TRUE,echo=TRUE}
-confusionMatrix(class.df$scored.class, class.df$class, positive = "1")
-```
-
-**Sensitivity**
-```{r, eval=TRUE, echo=TRUE}
-round(caret::sensitivity(factor(class.df$scored.class), 
-            factor(class.df$class), 
-            positive="1"), 4)
-```
-
-**Specificity**
-```{r,eval=TRUE,echo=TRUE, warning=FALSE, message=FALSE}
-round(caret::specificity(factor(class.df$scored.class), 
-                   factor(class.df$class), 
-                   negative="0"),4)
-```
-
-We compared the caret confusionmatrix with the one we created; all the measures are matched with the manually created one. Specificity and sensitivity are also same as we calculated.
-
 
   Before we move on, let's consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1.
 
@@ -247,6 +226,38 @@ result$auc
 
 Our RoC curve follows the left-hand border and then the top border of the ROC space, so it indicates a good test.
 
+**Caret Package**
+
+**Confusion Matrix**
+```{r,  eval=TRUE,echo=TRUE}
+confusionMatrix(class.df$scored.class, class.df$class, positive = "1")
+```
+
+**Sensitivity**
+```{r, eval=TRUE, echo=TRUE}
+round(caret::sensitivity(factor(class.df$scored.class), 
+            factor(class.df$class), 
+            positive="1"), 4)
+```
+
+**Specificity**
+```{r,eval=TRUE,echo=TRUE, warning=FALSE, message=FALSE}
+round(caret::specificity(factor(class.df$scored.class), 
+                   factor(class.df$class), 
+                   negative="0"),4)
+```
+
+We compared the caret confusionmatrix with the one we created; all the measures are matched with the manually created one. Specificity and sensitivity are also same as we calculated.
+
+**pROC Package**
+
+```{r, eval=TRUE, echo=TRUE}
+(roc <- roc(factor(class)~scored.probability,data=,class.df, plot=FALSE, ci=TRUE))
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+auc(factor(class)~scored.probability,class.df)
+
+```
+The RoC curve is very similar to our RoC plot drawn using the getRoCData() function above.
 
 
 ## Appendix 
