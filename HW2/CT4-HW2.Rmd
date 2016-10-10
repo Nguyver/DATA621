@@ -32,9 +32,7 @@ The *classification output* dataset contains 181 observations and 11 variables. 
 - **class**: the actual class for the observations
 - **score.class**: the predicted class for the observations (based on a threshold of 0.5)
 - **scored.probability**: the predicted probability of success for the observation
-  
-<<<<<<< HEAD
-=======
+
 ```{r}
 classification.orig  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW2/classification-output-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 ```
@@ -186,7 +184,6 @@ And the *ROC Curve* plots the **true positive rate against the false positive ra
 Here is the RoC Curve along with few threshold rows from our custom R function **getRoCData**:
 
 
->>>>>>> af9b1899e4764be884ddc57c28eaa90bd157aa15
 ```{r}
 getRoCData <- function(data)
 {
