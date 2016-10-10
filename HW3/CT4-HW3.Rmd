@@ -6,25 +6,29 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
+## Overview
 
-## R Markdown
+Dataset  
+[Crime - Training data](https://github.com/Nguyver/DATA621-HW/blob/master/HW3/crime-training-data.csv)  
+[Crime - Evaluation Data](https://github.com/Nguyver/DATA621-HW/blob/master/HW3/crime-evaluation-data.csv)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Data Exploration
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
-```{r cars}
-summary(cars)
+crime.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
 ```
+## Data Preparation
 
-## Including Plots
+## Build Models
 
-You can also embed plots, for example:
+## Select Models
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+## Predictions
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Appendix
