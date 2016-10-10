@@ -713,11 +713,8 @@ We compared the caret confusionmatrix with the one we created; all the measures 
 
 
 **lift**
-<<<<<<< HEAD
-```{r,echo=TRUE}
-=======
+
 ```{r, eval=FALSE, echo=TRUE}
->>>>>>> af9b1899e4764be884ddc57c28eaa90bd157aa15
 (liftResult <- lift(data=class.df, factor(class) ~ scored.probability))
 graphics::plot(liftResult, plot = "gain", title(main="Sensitivity Vs Support"))
 graphics::plot(liftResult, plot = "lift")
@@ -725,11 +722,8 @@ graphics::plot(liftResult, plot = "lift")
 
 ###13. Investate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
-<<<<<<< HEAD
-```{r,echo=TRUE, options(width = 80)}
-=======
+
 ```{r, eval=FALSE, echo=TRUE, options(width = 80)}
->>>>>>> af9b1899e4764be884ddc57c28eaa90bd157aa15
 (roc <- roc(factor(class)~scored.probability,data=,class.df, plot=FALSE, ci=TRUE))
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
 auc(factor(class)~scored.probability,class.df)
