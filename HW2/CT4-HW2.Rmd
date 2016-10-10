@@ -166,6 +166,8 @@ metrics <- rbind(metrics, data.frame(Metric = "Precision", Value = round(precsn,
 kable(metrics, caption="Confusion Matrix Metrics using custom functions")
 ```
 
+We compared the caret confusionmatrix with the one we created; all the measures are matched with the manually created one. Specificity and sensitivity are also same as we calculated.
+
 
   Before we move on, let's consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1.
 
@@ -498,7 +500,7 @@ graphics::plot(liftResult, plot = "lift")
 ###13. Investate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
 
-```{r, eval=FALSE, echo=TRUE, options(width = 80)}
+```{r, eval=TRUE, echo=TRUE, options(width = 80)}
 (roc <- roc(factor(class)~scored.probability,data=,class.df, plot=FALSE, ci=TRUE))
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
 auc(factor(class)~scored.probability,class.df)
