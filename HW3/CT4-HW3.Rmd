@@ -9,6 +9,16 @@ output: pdf_document
 knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
+
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(car)
+library(recommenderlab)
+library(knitr)
+library(PerformanceAnalytics)
+```
+
 ## Overview
 
 Dataset  
@@ -17,12 +27,40 @@ Dataset
 
 ## Data Exploration
 
+There are 466 observations, and 14 variables in the given training dataset. The below is a glimpse of the data.
 ```{r}
 crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
 crime.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
+glimpse(crime.trn)
 ```
+
+Lets check the summary of the given dataset, as well as check for any NA values in the data set.
+```{r}
+summary(crime.trn)
+```
+
+
+There appears to be no missing values. Lets plot the correlation between the variables.
+
+```{r, warning=FALSE, message=FALSE}
+cor.matrix <- cor(crime.trn[,1:ncol(crime.trn)])
+chart.Correlation(cor.matrix, histogram=TRUE, pch=19)
+```
+
+From the above correlation matrix , the target varaible seems to have correlation with 
+
+  * zn
+  * indus
+  * nox
+  * age
+  * dis
+  * rad
+  * tax
+  * lstat
+
+
 ## Data Preparation
 
 ## Build Models
