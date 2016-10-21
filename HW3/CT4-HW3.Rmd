@@ -53,8 +53,8 @@ From the above correlation matrix , the target varaible seems to have correlatio
 
   * zn    - proportion of residential land zoned for large lots 
   * indus - proportion of non-retail business acres per suburb 
-  * nox   - nitrogen oxides concentration 
-  * age   - proportion of owner-occupied units built prior to 1940 
+  * nox   - nitrogen oxides concentration
+  * age   - proportion of owner-occupied units built prior to 1940
   * dis   - weighted mean of distances to five Boston employment centers  
   * rad   - index of accessibility to radial highways 
   * tax   - full-value property-tax rate per $10,000 
@@ -65,28 +65,30 @@ From the above correlation matrix , the target varaible seems to have correlatio
 
 Lets look at each of the predictor variable's data:
 
-Find the average response rate, basically how many target 1's and 0's for each of the predictor's value, and then categorize the predictors accordingly:
-
 ### *zn* - proportion of residential land zoned for large lots
 
 ```{r}
 #proportion of residential land zoned for large lots
 
+hist(crime.trn$zn, main="Histogram of zn", xlab="zn", border="blue", col="green", las=1)
+table(crime.trn$zn)
+
 #Lets look at the average response rate.
 #gives %ges across rows , and rounded by 2 decimals.
-
 kable(round(prop.table(table(crime.trn$zn, crime.trn$target), 1),2))
 ```
 
-Here, we have the below categories for zn
+From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. When we looked at the average response rates for the zn data, we have identified following categories:
 
-0.37 :  0
-
-0.38 : 20
-
-0.78 : 22
-
-1.0  : All others.
+| Target  |           |
+|---------|-----------|
+|0, 1     |    zn     |
+|---------|-----------|
+|0.37,0.63|  0        |
+|0.38,0.62|  20       |
+|0.78,0.22|  22       |
+|1.0,0.00 | others.   |
+|---------|-----------|
 
 So, we left with these 4 categories. So, by definition, we need to make 3 dummy variables.
 
@@ -103,9 +105,10 @@ kable(head(crime.trn.new,15))
 
 Similarly, let's proceed with others
 
-### *indus* - proportion of residential land zoned for large lots
+### *indus* - proportion of non-retail business acres per suburb
 
-```{r, eval=FALSE}
+```{r}
+hist(crime.trn$indus, main="Histogram of Indus", xlab="indus", border="blue", col="green", las=1)
 #round(prop.table(table(crime.trn.new$indus, crime.trn.new$target), 1),2)
 ```
 
@@ -172,27 +175,12 @@ Similarly, let's proceed with others
 |6.2   | 0.00| 1.00|
 |------|-----|-----|
 
-We would need 7 dummy variables here:
-
-```{r, warning=FALSE, message=FALSE}
-crime.trn.new <-  crime.trn.new %>%
-                    mutate(indus1 = as.numeric(indus %in% c(18.1, 19.58,8.14,3.97,6.2)),
-                           indus2 = as.numeric(indus==21.89),
-                           indus3 = as.numeric(indus==9.9),
-                           indus4 = as.numeric(indus==8.56),
-                           indus5 = as.numeric(indus %in% c(5.86, 6.96)),
-                           indus6 = as.numeric(indus %in% c(9.69, 10.59)),
-                           indus7 = as.numeric(indus==7.38)) %>%
-                    select(-indus)
-
-#since we prepared the dummy variables needed, we do not need the indus any more here.
-kable(head(select(crime.trn.new, target, indus1, indus2, indus3, indus4, indus5, indus6, indus7),15))
-
-```
+The distribution above appears some what weired, and we could not find a meaningful categorization here.
 
 ### *nox*   - nitrogen oxides concentration 
 
-```{r, eval=FALSE}
+```{r}
+hist(crime.trn$nox, main="Histogram of nox", xlab="nox", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$nox, crime.trn.new$target), 1),2))
 ```
 
@@ -286,23 +274,71 @@ kable(head(select(crime.trn.new, target, indus1, indus2, indus3, indus4, indus5,
 |0.871  | 0.00| 1.00|
 |-------|-----|-----|
 
-```{r, warning=FALSE, message=FALSE}
-crime.trn.new <-  crime.trn.new %>%
-                    mutate(nox1 = as.numeric(nox %in% c(0.504,0.507,0.532,0.575,0.58,0.583,0.584,0.597,0.605,0.614,0.631,0.647,0.655,0.659,0.668,0.671,0.679,0.693,0.7,0.713,0.718,0.74,0.77,0.871)),
-                           nox2 = as.numeric(nox %in% c(0.624,0.538 )),
-                           nox3 = as.numeric(nox==0.544),
-                           nox4 = as.numeric(nox==0.464),
-                           nox5 = as.numeric(nox %in% c(0.431, 0.489)),
-                           nox6 = as.numeric(nox %in% c(0.493, 0.585)),
-                           nox7 = as.numeric(nox==0.52)) %>%
-                    select(-nox)
+There is no meaningful categorization can be concluded from the above. Let's proceed with other variables.
 
-#since we prepared the dummy variables needed, we do not need the nox any more here.
-kable(head(select(crime.trn.new, target, nox1, nox2, nox3, nox4, nox5, nox6, nox7),15))
+### *age*   - proportion of owner-occupied units built prior to 1940 
 
+```{r}
+hist(crime.trn.new$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
+#kable(round(prop.table(table(crime.trn.new$age, crime.trn.new$target), 1),2))
 ```
 
-Similary we need to re-categorize the other correlated variables...
+Looks like the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization here, so, we leave the variable as is.
+
+
+### *dis*   - weighted mean of distances to five Boston employment centers 
+
+```{r}
+hist(crime.trn.new$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
+#kable(round(prop.table(table(crime.trn.new$dis, crime.trn.new$target), 1),2))
+```
+
+### *rad*   - index of accessibility to radial highways 
+```{r}
+hist(crime.trn.new$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
+#kable(round(prop.table(table(crime.trn.new$rad, crime.trn.new$target), 1),2))
+```
+
+### *tax*   - full-value property-tax rate per $10,000 
+```{r}
+hist(crime.trn.new$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
+#kable(round(prop.table(table(crime.trn.new$tax, crime.trn.new$target), 1),2))
+```
+
+### *lstat*  - lower status of the population  
+```{r}
+hist(crime.trn.new$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
+```  
+
+Let's remove the predictors with low correlation with the target:
+
+```{r}
+crime.trn.new <-  crime.trn.new %>%
+                    select(-chas, -rm, -ptratio, -black, -medv)
+```
+
+
+Also, let's split our dataset into training (80%) and test (20%).
+
+```{r}
+set.seed(999) 
+s=sample(1:nrow(crime.trn.new),0.80*nrow(crime.trn.new)) 
+crime.train=crime.trn.new[s,] 
+crime.test=crime.trn.new[-s,]
+```
+
+Here's the glimpse of our training and test datasets for model building & validation:
+
+###Training dataset
+```{r}
+glimpse(crime.train)
+```
+
+###Test dataset
+```{r}
+glimpse(crime.test)
+```
+
 
 ## Build Models
 
