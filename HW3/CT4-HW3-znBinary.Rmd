@@ -38,7 +38,8 @@ glimpse(crime.trn)
 
 ```
 
-# A visual take on the missing values might be helpful: the Amelia package has a special plotting function missmap() that will plot your dataset and highlight missing values:
+### A visual take on the missing values might be helpful: 
+the Amelia package has a special plotting function missmap() that will plot your dataset and highlight missing values:
 ```{r}
 
 missmap(crime.trn, main = "Missing values vs observed")
@@ -306,7 +307,7 @@ There is no meaningful categorization can be concluded from the above. Let's pro
 
 ```{r}
 hist(crime.trn$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
-hist(crime.trn.new$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
+#hist(crime.trn.new$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$age, crime.trn.new$target), 1),2))
 ```
 
@@ -317,33 +318,34 @@ Looks like the buildings with age > 100 are mentioned as 100 in the above. We co
 
 ```{r}
 hist(crime.trn$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
-hist(crime.trn.new$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
+#hist(crime.trn.new$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$dis, crime.trn.new$target), 1),2))
 ```
 
 ### *rad*   - index of accessibility to radial highways 
 ```{r}
 hist(crime.trn$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
-hist(crime.trn.new$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
+#hist(crime.trn.new$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$rad, crime.trn.new$target), 1),2))
 ```
 
 ### *tax*   - full-value property-tax rate per $10,000 
 ```{r}
 hist(crime.trn$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
-hist(crime.trn.new$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
+#hist(crime.trn.new$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$tax, crime.trn.new$target), 1),2))
 ```
 
 ### *lstat*  - lower status of the population  
 ```{r}
 hist(crime.trn$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
-hist(crime.trn.new$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
+#hist(crime.trn.new$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
 ```  
 
 Let's remove the predictors with low correlation with the target:
 
 ```{r}
+
 crime.trn.new <-  crime.trn %>%
                     select(-chas, -rm, -ptratio, -black, -medv)
 #crime.trn.new <-  crime.trn.new %>%
@@ -355,7 +357,7 @@ Also, let's split our dataset into training (80%) and test (20%).
 
 ```{r}
 set.seed(999) 
-s=sample(1:nrow(crime.trn.new),0.80*nrow(crime.trn.new)) 
+s=sample(1:nrow(crime.trn),0.80*nrow(crime.trn)) 
 crime.train=crime.trn.new[s,] 
 crime.test=crime.trn.new[-s,]
 ```
@@ -374,35 +376,73 @@ glimpse(crime.test)
 
 
 ## Build Models
-#family=binomial in the glm() function.
+### 1. family=binomial in the glm() function.
+ 1.  Let us start with all the parameters
 ```{r}
-crime.train.model <- glm(target ~.,family=binomial(link='logit'),data=crime.train)
+ fullmodel = glm(target ~.,family=binomial,data =crime.train)
+ summary(fullmodel)
 ```
-The we obtain the summary of our model
+2. without any parameter
+
 ```{r}
-summary(crime.train.model)
+nothing <- glm(target ~ 1,family=binomial,data =crime.train)
+summary(nothing)
 ```
-we can see that zn,indus,age,dis and lstat are not statistically significant.
+
+### 2. Backward elimination method 
+
+```{r}
+backwards.model = step(fullmodel) # Backwards selection is the default
+backwards.formula <- formula(backwards.model)
+backwards.formula
+summary(backwards.model)
+```
+
+### 3. Forward elimination method
+
+```{r}
+forwards.model = step(nothing,
+scope=list(lower=formula(nothing),upper=formula(fullmodel)), direction="forward")
+forwards.formula <- formula(forwards.model)
+forwards.formula
+summary(forwards.model)
+```
+From the above two models we can see that zn,& age are not statistically significant.
 As for the statistically significant variables, rad & nox have  a strong positive association of crime rate while tax has a negative coefficient, suggests as all other variables being equal as tax increases crime rate decreases.
 
-A unit increase in index of accessibility to radial highways increses the log odds by 0.62. Also unit increase in nitrogen oxides concentration increases the logodds by 38.15, while increase in tax rate reduces the log odds by 0.008.
-
-#Now we can run the anova() function on the model to analyze the table of deviance
+### 4. Manual model1
+We would drop out Zn and age from the above models.
 ```{r}
- 
-anova(crime.train.model, test="Chisq")
+manual.model <- glm(target ~ nox + rad + tax + dis,family=binomial(link='logit'),data=crime.train)
+summary(manual.model)
 ```
-The difference between the null deviance and the residual deviance shows how our model is doing against the null model (a model with only the intercept). The wider this gap, the better.
-Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
+
+### 5. Manual model2
+We would drop out distance from the above model since the p value is not significant. Now the new model:
+```{r}
+manual.model2 <- glm(target ~ nox + rad + tax ,family=binomial(link='logit'),data=crime.train)
+summary(manual.model2)
+```
+A unit increase in index of accessibility to radial highways increses the log odds by 0.56. Also unit increase in nitrogen oxides concentration increases the logodds by 33.03, while increase in tax rate reduces the log odds by 0.008.
 
 ```{r}
-crime.train.model2 <- glm(target ~ rad + tax ,family=binomial(link='logit'),data=crime.train)
-summary(crime.train.model2)
+par(mfrow=c(2, 2))
+graphics::plot(manual.model2)
 ```
 
 
 
 ## Select Models
+### 1.  anova() function on the model to analyze the table of deviance
+```{r}
+ 
+anova(manual.model2, test="Chisq")
+```
+The difference between the null deviance and the residual deviance shows how our model is doing against the null model (a model with only the intercept). The wider this gap, the better.
+Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
+### 2. Specificity and Sensitivity
+### 3. AUC 
+
 
 ## Predictions
 
