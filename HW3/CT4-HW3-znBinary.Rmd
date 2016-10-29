@@ -18,6 +18,8 @@ library(recommenderlab)
 library(knitr)
 library(PerformanceAnalytics)
 library(Amelia)
+library(robustbase)
+library(BMA)
 ```
 
 ## Overview
@@ -429,7 +431,34 @@ A unit increase in index of accessibility to radial highways increses the log od
 par(mfrow=c(2, 2))
 graphics::plot(manual.model2)
 ```
+### 6.Bayesian Approach
+```{r}
+output <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
+summary(output)
 
+# Posterior probability of each of 11  models (rest very small by
+# comparison, so are omitted, change value of OR to see them)
+ output$postprob
+ output$label
+
+# For each of 8 variables, probability they should be in the model
+ output$names
+ output$probne0
+ 
+ imageplot.bma(output)
+ output$postmean
+ 
+```
+from the above resuls it is clear nitrogen oxides concentration(nox), accessibility to radial highways(rad) and property-tax rate(tax) are the 3 variables -probability they should be in the model
+The model is 
+target ~ nox+rad+tax
+
+
+
+```{r}
+
+
+```
 
 
 ## Select Models
@@ -442,6 +471,14 @@ The difference between the null deviance and the residual deviance shows how our
 Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
 ### 2. Specificity and Sensitivity
 ### 3. AUC 
+
+```{r}
+fitted.results <- predict(manual.model2,newdata=subset(crime.test,select=c(3,6,7)),type='response')
+fitted.results <- ifelse(fitted.results > 0.5,1,0)
+table(fitted.results)
+table(crime.test$target)
+
+```
 
 
 ## Predictions
