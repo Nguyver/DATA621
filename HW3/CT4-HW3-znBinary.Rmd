@@ -126,9 +126,9 @@ crime.trn$target <- as.factor(crime.trn$target)
 For ZN variable, 339/466 are zeros. We are going to create a new variable **zn_ind** as indicator for residential zones containing large lots (land size over 25,000 sq.ft as 1)
 
 ```{r}
-#crime.trn$zn_ind <- ifelse(crime.trn$zn > 0, 1, 0)
-crime.trn$zn <- ifelse(crime.trn$zn > 0, 1, 0)
-table(crime.trn$zn)
+crime.trn$zn_ind <- ifelse(crime.trn$zn > 0, 1, 0)
+#crime.trn$zn <- ifelse(crime.trn$zn > 0, 1, 0)
+table(crime.trn$zn_ind)
 ```
 
 Check for Multicolinearity among the predictor variables and remove those with excessive correlation among the explanatory variables. 
