@@ -20,6 +20,7 @@ library(PerformanceAnalytics)
 library(Amelia)
 library(robustbase)
 library(BMA)
+library(caret)
 ```
 
 ## Overview
@@ -46,6 +47,10 @@ Dataset
 
 ## Data Exploration
 
+- Move Histograms to data exploration (grid)
+- do not remove variables based on correlation
+- possibly remove "tables"
+
 The dataset contains 466 observations and 14 variables. The response variable is the **target** variable. Below is a glimpse of the data.
 ```{r read data}
 crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
@@ -62,26 +67,7 @@ The Amelia package has a special plotting function missmap() that will plot your
 ```{r}
 missmap(crime.trn, main = "Missing values vs observed")
 ```
-There are no missing values in the dataset.
-
-```{r}
-length(crime.trn$zn)
-table(crime.trn$zn)
-```
-Out of 466 values 339 are zeros. So we would like to treat zn as binary, land size over 25,000 sq.ft as 1 and below 25,000 sq.ft as 0
-
-```{r}
-#crime.trn$zn <- ifelse(crime.trn$zn>0, 1, 0)
-table(crime.trn$zn)
-
-```
-
-
-Lets check the summary of the given dataset, as well as check for any NA values in the data set.
-```{r}
-summary(crime.trn)
-```
-
+There are no missing values in the dataset.  
 
 There appears to be no missing values. Lets plot the correlation between the variables.
 
@@ -96,58 +82,30 @@ From the above correlation matrix , the **target** variable seems to have correl
   * indus - proportion of non-retail business acres per suburb 
   * nox   - nitrogen oxides concentration
   * age   - proportion of owner-occupied units built prior to 1940
-  * dis   - weighted mean of distances to five Boston employment centers  
+  * dis   - weighted mean of distances to five Boston employment centers
   * rad   - index of accessibility to radial highways 
   * tax   - full-value property-tax rate per $10,000 
   * lstat - lower status of the population 
 
 
-## Data Preparation
+FIND A PLACE TO PUT THIS  
+Two variables should be converted to factors.  
 
 Lets look at each of the predictor variable's data:
 
-### *zn* - proportion of residential land zoned for large lots
 
 ```{r}
 #proportion of residential land zoned for large lots
 
 hist(crime.trn$zn, main="Histogram of zn", xlab="zn", border="blue", col="green", las=1)
-table(crime.trn$zn)
 
 #Lets look at the average response rate.
 #gives %ges across rows , and rounded by 2 decimals.
-kable(round(prop.table(table(crime.trn$zn, crime.trn$target), 1),2))
 ```
 
-
-From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. When we looked at the average response rates for the zn data, we have identified following categories:
-
-| Target  |           |
-|---------|-----------|
-|0, 1     |    zn     |
-|---------|-----------|
-|0.37,0.63|  0        |
-|0.38,0.62|  20       |
-|0.78,0.22|  22       |
-|1.0,0.00 | others.   |
-|---------|-----------|
-
-So, we left with these 4 categories. So, by definition, we need to make 3 dummy variables.
-
-```{r, warning=FALSE, message=FALSE}
-crime.trn.new <-  crime.trn %>%
-                    mutate(zn1 = as.numeric(zn==0),
-                           zn2 = as.numeric(zn==20),
-                           zn3 = as.numeric(zn==22)) %>%
-                    select(-zn)
-
-#since we prepared the dummy variables needed, we do not need the zn any more here.
-kable(head(crime.trn.new,15))
-```
+From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. 
 
 Similarly, let's proceed with others
-
-### *indus* - proportion of non-retail business acres per suburb
 
 ```{r}
 hist(crime.trn$indus, main="Histogram of Indus", xlab="indus", border="blue", col="green", las=1)
@@ -155,170 +113,11 @@ hist(crime.trn$indus, main="Histogram of Indus", xlab="indus", border="blue", co
 ```
 
 
-|Indus | Target    |
-|------|-----------|
-|2.95  | 1.00| 0.00|
-|3.24  | 1.00| 0.00|
-|3.33  | 1.00| 0.00|
-|3.37  | 1.00| 0.00|
-|3.41  | 1.00| 0.00|
-|3.44  | 1.00| 0.00|
-|3.64  | 1.00| 0.00|
-|3.75  | 1.00| 0.00|
-|3.78  | 1.00| 0.00|
-|4     | 1.00| 0.00|
-|4.05  | 1.00| 0.00|
-|4.15  | 1.00| 0.00|
-|4.39  | 1.00| 0.00|
-|4.49  | 1.00| 0.00|
-|4.86  | 1.00| 0.00|
-|4.93  | 1.00| 0.00|
-|4.95  | 1.00| 0.00|
-|5.13  | 1.00| 0.00|
-|5.19  | 1.00| 0.00|
-|5.32  | 1.00| 0.00|
-|5.64  | 1.00| 0.00|
-|5.96  | 1.00| 0.00|
-|6.06  | 1.00| 0.00|
-|6.07  | 1.00| 0.00|
-|6.09  | 1.00| 0.00|
-|10.01 | 1.00| 0.00|
-|10.81 | 1.00| 0.00|
-|11.93 | 1.00| 0.00|
-|12.83 | 1.00| 0.00|
-|13.89 | 1.00| 0.00|
-|13.92 | 1.00| 0.00|
-|15.04 | 1.00| 0.00|
-|6.41  | 1.00| 0.00|
-|6.91  | 1.00| 0.00|
-|7.07  | 1.00| 0.00|
-|7.87  | 1.00| 0.00|
-|25.65 | 1.00| 0.00|
-|27.74 | 1.00| 0.00|
-|------|-----|-----|
-|7.38  | 0.67| 0.33|
-|------|-----|-----|
-|9.69  | 0.71| 0.29|
-|10.59 | 0.70| 0.30|
-|------|-----|-----|
-|5.86  | 0.78| 0.22|
-|6.96  | 0.80| 0.20|
-|------|-----|-----|
-|8.56  | 0.91| 0.09|
-|------|-----|-----|
-|9.9   | 0.18| 0.82|
-|------|-----|-----|
-|21.89 | 0.07| 0.93|
-|------|-----|-----|
-|18.1  | 0.00| 1.00|
-|19.58 | 0.00| 1.00|
-|8.14  | 0.00| 1.00|
-|3.97  | 0.00| 1.00|
-|6.2   | 0.00| 1.00|
-|------|-----|-----|
-
-The distribution above appears some what weired, and we could not find a meaningful categorization here.
-
-### *nox*   - nitrogen oxides concentration 
-
 ```{r}
 hist(crime.trn$nox, main="Histogram of nox", xlab="nox", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$nox, crime.trn.new$target), 1),2))
 ```
 
-|nox    | Target    |
-|-------|-----------|
-|0.389  | 1.00| 0.00|
-|0.392  | 1.00| 0.00|
-|0.394  | 1.00| 0.00|
-|0.398  | 1.00| 0.00|
-|0.4    | 1.00| 0.00|
-|0.401  | 1.00| 0.00|
-|0.403  | 1.00| 0.00|
-|0.404  | 1.00| 0.00|
-|0.405  | 1.00| 0.00|
-|0.409  | 1.00| 0.00|
-|0.41   | 1.00| 0.00|
-|0.411  | 1.00| 0.00|
-|0.413  | 1.00| 0.00|
-|0.415  | 1.00| 0.00|
-|0.4161 | 1.00| 0.00|
-|0.422  | 1.00| 0.00|
-|0.426  | 1.00| 0.00|
-|0.428  | 1.00| 0.00|
-|0.429  | 1.00| 0.00|
-|0.433  | 1.00| 0.00|
-|0.437  | 1.00| 0.00|
-|0.4379 | 1.00| 0.00|
-|0.439  | 1.00| 0.00|
-|0.442  | 1.00| 0.00|
-|0.4429 | 1.00| 0.00|
-|0.445  | 1.00| 0.00|
-|0.447  | 1.00| 0.00|
-|0.448  | 1.00| 0.00|
-|0.449  | 1.00| 0.00|
-|0.453  | 1.00| 0.00|
-|0.458  | 1.00| 0.00|
-|0.46   | 1.00| 0.00|
-|0.469  | 1.00| 0.00|
-|0.472  | 1.00| 0.00|
-|0.484  | 1.00| 0.00|
-|0.488  | 1.00| 0.00|
-|0.499  | 1.00| 0.00|
-|0.51   | 1.00| 0.00|
-|0.515  | 1.00| 0.00|
-|0.518  | 1.00| 0.00|
-|0.524  | 1.00| 0.00|
-|0.547  | 1.00| 0.00|
-|0.55   | 1.00| 0.00|
-|0.573  | 1.00| 0.00|
-|0.581  | 1.00| 0.00|
-|0.609  | 1.00| 0.00|
-|-------------------|
-|0.52   | 0.91| 0.09|
-|-------------------|
-|0.493  | 0.67| 0.33|
-|0.585  | 0.71| 0.29|
-|-------------------|
-|0.431  | 0.78| 0.22|
-|0.489  | 0.79| 0.21|
-|-------------------|
-|0.464  | 0.88| 0.12|
-|-------------------|
-|0.544  | 0.18| 0.82|
-|-------------------|
-|0.624  | 0.07| 0.93|
-|0.538  | 0.05| 0.95|
-|-------------------|
-|0.504  | 0.00| 1.00|
-|0.507  | 0.00| 1.00|
-|0.532  | 0.00| 1.00|
-|0.575  | 0.00| 1.00|
-|0.58   | 0.00| 1.00|
-|0.583  | 0.00| 1.00|
-|0.584  | 0.00| 1.00|
-|0.597  | 0.00| 1.00|
-|0.605  | 0.00| 1.00|
-|0.614  | 0.00| 1.00|
-|0.631  | 0.00| 1.00|
-|0.647  | 0.00| 1.00|
-|0.655  | 0.00| 1.00|
-|0.659  | 0.00| 1.00|
-|0.668  | 0.00| 1.00|
-|0.671  | 0.00| 1.00|
-|0.679  | 0.00| 1.00|
-|0.693  | 0.00| 1.00|
-|0.7    | 0.00| 1.00|
-|0.713  | 0.00| 1.00|
-|0.718  | 0.00| 1.00|
-|0.74   | 0.00| 1.00|
-|0.77   | 0.00| 1.00|
-|0.871  | 0.00| 1.00|
-|-------|-----|-----|
-
-There is no meaningful categorization can be concluded from the above. Let's proceed with other variables.
-
-### *age*   - proportion of owner-occupied units built prior to 1940 
 
 ```{r}
 hist(crime.trn$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
@@ -329,42 +128,46 @@ hist(crime.trn$age, main="Histogram of age", xlab="age", border="blue", col="gre
 Looks like the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization here, so, we leave the variable as is.
 
 
-### *dis*   - weighted mean of distances to five Boston employment centers 
-
 ```{r}
 hist(crime.trn$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
 #hist(crime.trn.new$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$dis, crime.trn.new$target), 1),2))
 ```
 
-### *rad*   - index of accessibility to radial highways 
 ```{r}
 hist(crime.trn$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
 #hist(crime.trn.new$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$rad, crime.trn.new$target), 1),2))
 ```
 
-### *tax*   - full-value property-tax rate per $10,000 
 ```{r}
 hist(crime.trn$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
 #hist(crime.trn.new$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
 #kable(round(prop.table(table(crime.trn.new$tax, crime.trn.new$target), 1),2))
 ```
 
-### *lstat*  - lower status of the population  
 ```{r}
 hist(crime.trn$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
 #hist(crime.trn.new$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
 ```  
 
-Let's remove the predictors with low correlation with the target:
+## Data Preparation
+
+- address multicolinearity
+- change columns to factors
+- zn variable
+- train/test sets
+
 
 ```{r}
+#length(crime.trn$zn)
+#table(crime.trn$zn)
+```
+Out of 466 values 339 are zeros. So we would like to treat zn as binary, land size over 25,000 sq.ft as 1 and below 25,000 sq.ft as 0
 
-crime.trn.new <-  crime.trn %>%
-                    select(-chas, -rm, -ptratio, -black, -medv)
-#crime.trn.new <-  crime.trn.new %>%
-#                    select(-chas, -rm, -ptratio, -black, -medv)
+```{r}
+crime.trn$zn <- ifelse(crime.trn$zn>0, 1, 0)
+table(crime.trn$zn)
 ```
 
 
@@ -373,38 +176,30 @@ Also, let's split our dataset into training (80%) and test (20%).
 ```{r}
 set.seed(999) 
 s=sample(1:nrow(crime.trn),0.80*nrow(crime.trn)) 
-crime.train=crime.trn.new[s,] 
-crime.test=crime.trn.new[-s,]
+crime.train=crime.trn[s,] 
+crime.test=crime.trn[-s,]
 ```
 
-Here's the glimpse of our training and test datasets for model building & validation:
-
-###Training dataset
+CONVERT INT to FACTORS
 ```{r}
-glimpse(crime.train)
-```
 
-###Test dataset
-```{r}
-glimpse(crime.test)
+
 ```
 
 
 ## Build Models
-### 1. family=binomial in the glm() function.
+- Clean up outputs
+- explain coefficients
+- AUC?
+
+### 1. Backward elimination method 
+
+family=binomial in the glm() function.
  1.  Let us start with all the parameters
 ```{r}
  fullmodel = glm(target ~.,family=binomial,data =crime.train)
  summary(fullmodel)
 ```
-2. without any parameter
-
-```{r}
-nothing <- glm(target ~ 1,family=binomial,data =crime.train)
-summary(nothing)
-```
-
-### 2. Backward elimination method 
 
 ```{r}
 backwards.model = step(fullmodel) # Backwards selection is the default
@@ -413,7 +208,15 @@ backwards.formula
 summary(backwards.model)
 ```
 
-### 3. Forward elimination method
+### 2. Forward elimination method
+
+
+2. without any parameter
+
+```{r}
+nothing <- glm(target ~ 1,family=binomial,data =crime.train)
+summary(nothing)
+```
 
 ```{r}
 forwards.model = step(nothing,
@@ -425,14 +228,14 @@ summary(forwards.model)
 From the above two models we can see that zn,& age are not statistically significant.
 As for the statistically significant variables, rad & nox have  a strong positive association of crime rate while tax has a negative coefficient, suggests as all other variables being equal as tax increases crime rate decreases.
 
-### 4. Manual model1
+
+Both Forward and backward elimination models came up with the same model. We next remove variables of low significance.
 We would drop out Zn and age from the above models.
 ```{r}
 manual.model <- glm(target ~ nox + rad + tax + dis,family=binomial(link='logit'),data=crime.train)
 summary(manual.model)
 ```
 
-### 5. Manual model2
 We would drop out distance from the above model since the p value is not significant. Now the new model:
 ```{r}
 manual.model2 <- glm(target ~ nox + rad + tax ,family=binomial(link='logit'),data=crime.train)
@@ -444,7 +247,7 @@ A unit increase in index of accessibility to radial highways increses the log od
 par(mfrow=c(2, 2))
 graphics::plot(manual.model2)
 ```
-### 6.Bayesian Approach
+### 3.Bayesian Approach
 ```{r}
 output <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
 summary(output)
@@ -462,16 +265,10 @@ summary(output)
  output$postmean
  
 ```
-from the above resuls it is clear nitrogen oxides concentration(nox), accessibility to radial highways(rad) and property-tax rate(tax) are the 3 variables -probability they should be in the model
+From the above resuls it is clear nitrogen oxides concentration(nox), accessibility to radial highways(rad) and property-tax rate(tax) are the 3 variables -probability they should be in the model
 The model is 
 target ~ nox+rad+tax
 
-
-
-```{r}
-
-
-```
 
 
 ## Select Models
@@ -485,78 +282,43 @@ Nitrogen oxides concentration is the least deviation, so this variable can be dr
 
 ### 2. Specificity and Sensitivity
 
-```{r metrics_functions}
-accuracy <- function(data, actual.idx=9, predict.idx=10){
-  TP <- 4; 
-  TN <- 1
-  FP <- 3
-  FN <- 2
-  
-  confusion <- table(data[,actual.idx], data[,predict.idx])
-  value <- (confusion[TP]+confusion[TN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
-  
-  return(value)
-}
+```{r}
+fitted.results <- predict(manual.model2,newdata=subset(crime.test,select=c(4,8,9)),type='response')
+fitted.results <- ifelse(fitted.results > 0.5,1,0)
+table(fitted.results)
+table(crime.test$target)
 
-classErrorRate <- function(data, actual.idx=9, predict.idx=10){
-  TP <- 4
-  TN <- 1
-  FP <- 3
-  FN <- 2
-  
-  confusion <- table(data[,actual.idx], data[,predict.idx])
-  value <- (confusion[FP]+confusion[FN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
-  
-  return(value)
-}
+crime.test$predicted <- fitted.results
+crime.test$predicted <- factor(crime.test$predicted)
+crime.test$target <- factor(crime.test$target)
 
-precision <- function(data, actual.idx=9, predict.idx=10){
-  TP <- 4
-  TN <- 1
-  FP <- 3
-  FN <- 2
-  
-  confusion <- table(data[,actual.idx], data[,predict.idx])
-  value <- confusion[TP]/(confusion[TP]+confusion[FP])
-  
-  return(value)
-}
+#length(fitted.results)
 
-sensitivity <- function(data, actual.idx=9, predict.idx=10){
-  TP <- 4
-  TN <- 1
-  FP <- 3
-  FN <- 2
-  
-  confusion <- table(data[,actual.idx], data[,predict.idx])
-  value <- confusion[TP]/(confusion[TP]+confusion[FN])
-   
-  return(value)
-}
-
-specificity <- function(data, actual.idx=9, predict.idx=10){
-  TP <- 4
-  TN <- 1
-  FP <- 3
-  FN <- 2
-  
-  confusion <- table(data[,actual.idx], data[,predict.idx])
-  value <- confusion[TN]/(confusion[TN]+confusion[FP])
-  
-  return(value)
-}
+#summary(crime.test)
+#nrow(crime.test)
 ```
+
+```{r}
+round(sensitivity(crime.test$predicted, 
+            crime.test$target, 
+            positive="1"), 4)
+
+round(specificity(crime.test$predicted, 
+                   crime.test$target, 
+                   negative="0"),4)
+
+```
+
+
 
 ### 3. AUC 
 
 ```{r}
-fitted.results <- predict(manual.model2,newdata=subset(crime.test,select=c(3,6,7)),type='response')
-fitted.results <- ifelse(fitted.results > 0.5,1,0)
-table(fitted.results)
-table(crime.test$target)
+
 ```
 
 
 ## Predictions
+
 
 ## Appendix
