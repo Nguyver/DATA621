@@ -183,7 +183,7 @@ crime.train=crime.trn[s,]
 crime.test=crime.trn[-s,]
 ```
 
-Number of observations in *training* dataset is `r nrow(crime.train)`
+Number of observations in *training* dataset is `r nrow(crime.train)` 
 Number of observations in *test* dataset is `r nrow(crime.test)`
 
 ## Build Models
@@ -260,24 +260,24 @@ In the residuals Vs Fitted graph, the red line is not flat, which indicates the 
 
 ### 4.Bayesian Approach
 ```{r}
-output <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
-summary(output)
+bayesian.model <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
+summary(bayesian.model)
 
 # Posterior probability of each of 11  models (rest very small by
 # comparison, so are omitted, change value of OR to see them)
- output$postprob
- output$label
+ bayesian.model$postprob
+ bayesian.model$label
 
 # For each of 8 variables, probability they should be in the model
- output$names
- output$probne0
+ bayesian.model$names
+ bayesian.model$probne0
  
- imageplot.bma(output)
- output$postmean
+ imageplot.bma(bayesian.model)
+ bayesian.model$postmean
 ```
 From the above resuls it is clear nitrogen oxides concentration(nox), accessibility to radial highways(rad) and property-tax rate(tax) are the 3 variables -probability they should be in the model
 The model is 
-target ~ nox+rad+tax
+*target ~ nox+rad+tax*
 
 
 ## Select Models
@@ -287,7 +287,13 @@ target ~ nox+rad+tax
 anova(manual.final, test="Chisq")
 ```
 The difference between the null deviance and the residual deviance shows how our model is doing against the null model (a model with only the intercept). The wider this gap, the better.
-Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
+Nitrogen oxides concentration is the least deviation, so this variable may be dropped from the model.
+
+All the models provided us with the below model formula:
+
+*target ~ nox+rad+tax*
+
+Let us try to apply the performance measurs on this.
 
 ### 2. Performance measures:
 
@@ -296,23 +302,21 @@ Sensitivity is basically the ability of the model to capture all positives.  And
 Sensitivity = $$\frac{TP}{TP+FN}$$
 Specificity = $$\frac{TN}{TN+FP}$$
 
-For an ideal model, the predictions will be perfect - meaning the 'accuracy, sensitivity and specificity' will all be 1 where as the mis-classification error will be zero. In practical scenarios we would like to have the sensitivity and spcificity as close to 1 as possible. Lets see which model provides us with the better measures:
+For an ideal model, the predictions will be perfect - meaning the 'accuracy, sensitivity and specificity' will all be 1 where as the mis-classification error will be zero. In practical scenarios we would like to have the sensitivity and spcificity as close to 1 as possible. 
 
-*Manual Model from Forward & Backward Steps* 
+*Apply the performance measures on the selected model [ target ~ nox+rad+tax ]* 
 
 Score should be high when outcome is 1 and low when outcome is 0. Lets visualize how our binary response is behaving with respect to the score that we obtained.
 
+
 ```{r}
-#formula
-formula(manual.final)
-summary(manual.final)$coefficients[,4] 
-#fitted.results <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
-#fitted.results <- ifelse(fitted.results > 0.5,1,0)
+#Storage to keep performance measures that would aid us in selecting the best model:
+performance.results <- data.frame( model = character(),  Sn = numeric(), Sp = numeric, Accuracy = numeric())
+```
 
+```{r}
 crime.test$score <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
-
 ggplot(crime.test, aes(y=target, x=score, color=factor(target))) + geom_point() + geom_jitter()
-
 ```
 
 We can see that the response 0 is bunched around low scores and response 1 is bunched around high scores. However, there is also overlap as well across some scores. We need to find a cutoff in the score so as to reach our target here.
@@ -351,12 +355,13 @@ sensitivity <- round(sensitivity(factor(crime.test$predicted),crime.test$target,
 specificity <- round(specificity(factor(crime.test$predicted),crime.test$target, negative="0"),4)
 
 #accuracy = (TP+TN)/(P+N)
-accuracy <- (TP + TN) / (P + N)
+accuracy <- round( ( (TP + TN) / (P + N) ) , 4)
 
 cnfMtx <- confusionMatrix(crime.test$predicted, crime.test$target, positive = "1")
 
-```
+performance.results <- rbind(performance.results, c("GLM - Combined [Forwared, Backward, Manual]",sensitivity, specificity,  accuracy))
 
+```
 
 
 ### 3. AUC 
@@ -365,6 +370,11 @@ cnfMtx <- confusionMatrix(crime.test$predicted, crime.test$target, positive = "1
 (roc <- roc(factor(predicted)~as.numeric(target),data=crime.test, plot=FALSE, ci=TRUE))
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
 auc(factor(predicted)~as.numeric(target),crime.test)
+```
+
+```{r}
+colnames(performance.results) <- c("Method", "Sn", "Sp", "Accuracy")
+kable(performance.results)
 ```
 
 
