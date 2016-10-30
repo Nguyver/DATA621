@@ -512,7 +512,7 @@ cnfMtx <- confusionMatrix(crime.test$predicted, crime.test$target, positive = "1
 ```
 
 
-### AUC for Forward Elimination
+### AUC for Bayesian
 
 ```{r}
 (roc <- roc(factor(predicted)~as.numeric(target),data=crime.test, plot=FALSE, ci=TRUE))
