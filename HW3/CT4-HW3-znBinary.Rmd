@@ -50,11 +50,7 @@ Dataset
 
 ## Data Exploration
 
-- Move Histograms to data exploration (grid)
-- do not remove variables based on correlation
-- possibly remove "tables"
-
-The dataset contains 466 observations and 14 variables. The response variable is the **target** variable. Below is a glimpse of the data.
+The dataset contains 466 observations and 14 variables. The response variable is the **target** variable. Below is a glimpse of the data. A quick look indicates that chas and target might be classification variables.
 ```{r read data}
 crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
@@ -65,14 +61,18 @@ crime.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/mas
 glimpse(crime.trn)
 ```
 
-### A visual take on the missing values might be helpful: 
-The Amelia package has a special plotting function missmap() that will plot your dataset and highlight missing values:
+Taking a closer look at the data with summary statistics, we can see that two values (chas, target) should be converted to factors.
+
+```{r}
+summary(crime.trn)
+```
+
+### Visually assessing missing values: 
+The Amelia package has a plotting function missmap() that will plot the dataset and highlight missing values:
 ```{r}
 missmap(crime.trn, main = "Missing values vs observed")
 ```
-There are no missing values in the dataset.  
-
-There appears to be no missing values. Lets plot the correlation between the variables.
+There are no missing values in the dataset. Lets plot the correlation between the variables.
 
 ```{r, warning=FALSE, message=FALSE}
 cor.matrix <- cor(crime.trn[,1:ncol(crime.trn)])
@@ -125,13 +125,14 @@ g_rad <- ggplot(data = crime.trn) + geom_histogram(aes(x=rad)) +  theme(axis.tex
 g_tax <- ggplot(data = crime.trn) + geom_histogram(aes(x=log(tax))) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
+
 ```{r}
-g_lstat <- ggplot(data = crime.trn) + geom_histogram(aes(x=lstat), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_lstat <- ggplot(data = crime.trn) + geom_histogram(aes(x=lstat)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 grid.arrange(g_zn, g_indus, g_nox, g_age,g_dis,g_rad,g_tax,g_lstat, ncol=2)
 ```  
 
-From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. And the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization in the other predictors.
 
+From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. And the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization in the other predictors.
 
 ## Data Preparation
 
@@ -139,16 +140,17 @@ From the above, it appears like majority of the neighborhoods have no residentia
 
 Convert the *chas* and *target* variables into factors:
 
-```{r}
+```{r echo=TRUE}
 crime.trn$chas <- as.factor(crime.trn$chas)
 crime.trn$target <- as.factor(crime.trn$target)
 ```
 
-Out of 466 values 339 are zeros. So we would like to treat zn as binary, land size over 25,000 sq.ft as 1 and below 25,000 sq.ft as 0
+For ZN variable, 339/466 are zeros. We are going to create a new variable **zn_ind** as indicator for residential zones containing large lots (land size over 25,000 sq.ft as 1)
 
 ```{r}
-crime.trn$zn <- ifelse(crime.trn$zn > 0, 1, 0)
-table(crime.trn$zn)
+crime.trn$zn_ind <- ifelse(crime.trn$zn > 0, 1, 0)
+#crime.trn$zn <- ifelse(crime.trn$zn > 0, 1, 0)
+table(crime.trn$zn_ind)
 ```
 
 ### Check for Multicolinearity in the predictors:
@@ -158,7 +160,6 @@ Check for Multicolinearity among the predictor variables and remove those with e
 The below is the VIF values, lets get rid of those that has got VIF > 10.
  
 ```{r}
-
 fit <- glm(target ~ . , data=crime.trn, family = binomial)
 
 #Lets check for Multi-Collinearity - lets find vif value and drop those that has 
@@ -170,13 +171,12 @@ names(vif.df) <- c('VIF')
 kable(vif.df)
 ```
 
-From the above table, we do not see multi-colinearity (with VIF > 10) among the predictors.
-
+From the above table, we do not see multi-colinearity (with VIF > 10) among the predictors.  
 ### Split the dataset into training and test:
 
-Also, let's split our dataset into training (80%) and test (20%).
+We will randomly split our dataset into training (80%) and test (20%).
 
-```{r}
+```{r echo=TRUE}
 set.seed(999) 
 s=sample(1:nrow(crime.trn),0.80*nrow(crime.trn)) 
 crime.train=crime.trn[s,] 
@@ -187,10 +187,6 @@ Number of observations in *training* dataset is `r nrow(crime.train)`
 Number of observations in *test* dataset is `r nrow(crime.test)`
 
 ## Build Models
-- Clean up outputs
-- explain coefficients
-- AUC?
-
 
 The below are the few different approaches we will try to build the models:
 
@@ -201,26 +197,26 @@ The below are the few different approaches we will try to build the models:
 
 ### 1. Backward elimination method 
 
-family=binomial in the glm() function.
+With backwards elimination, we start with full set of parameters and iteratively reduce the numbers of parameters using AIC.
 
-1.  Let us start with all the parameters
 ```{r}
- names(crime.train)
  fullmodel = stats::glm(target ~ ., family=binomial(), data =crime.train)
  summary(fullmodel)
 ```
 
 ```{r}
-backwards.model = step(fullmodel) # Backwards selection is the default
+backwards.model = step(fullmodel, trace = FALSE) #Backwards selection is the default
 backwards.formula <- formula(backwards.model)
 backwards.formula
 summary(backwards.model) 
+
+par(mfrow=c(2, 2))
+graphics::plot(backwards.model)
 ```
 
 ### 2. Forward elimination method
 
-
-2. without any parameter
+With forward elimination, we start with an empty candidate set of parameters and iteratively add variables using AIC.
 
 ```{r}
 nothing <- glm(target ~ 1,family=binomial,data =crime.train, trace = FALSE)
@@ -233,25 +229,27 @@ scope=list(lower=formula(nothing),upper=formula(fullmodel)), direction="forward"
 forwards.formula <- formula(forwards.model)
 forwards.formula
 summary(forwards.model)
+
+par(mfrow=c(2, 2))
+graphics::plot(backwards.model)
 ```
-From the above two models we can see that zn,& age are not statistically significant.
+From the above two models we can see that zn & age are not statistically significant.
 As for the statistically significant variables, rad & nox have  a strong positive association of crime rate while tax has a negative coefficient, suggests as all other variables being equal as tax increases crime rate decreases.
 
-
-Both Forward and backward elimination models came up with the same model. We next remove variables of low significance.
-We would drop out Zn and age from the above models.
+### 3. Manual
+Both Forward and backward elimination models produced the same model. Using the model obtained from backwards/forwards elimination, we next remove variables of low significance. We will remove Zn and age from the above models.
 
 ```{r}
 manual.model <- glm(target ~ nox + rad + tax + dis,family=binomial(link='logit'),data=crime.train, trace = FALSE)
 summary(manual.model)
 ```
 
-We would drop out distance from the above model since the p value is not significant. Now the new model:
+We will remove distance from the above model since the p value is not significant. Now the new model:
 ```{r}
 manual.final <- glm(target ~ nox + rad + tax ,family=binomial(link='logit'),data=crime.train, trace = FALSE)
 summary(manual.final)
 ```
-A unit increase in index of accessibility to radial highways increses the log odds by 0.56. Also unit increase in nitrogen oxides concentration increases the logodds by 33.03, while increase in tax rate reduces the log odds by 0.008.
+A unit increase in index of accessibility to radial highways increses the log odds by 0.56. Also unit increase in nitrogen oxides concentration increases the log odds by 33.03, while increase in tax rate reduces the log odds by 0.008.
 
 ```{r}
 par(mfrow=c(2, 2))
@@ -260,7 +258,7 @@ graphics::plot(manual.final)
 
 In the residuals Vs Fitted graph, the red line is not flat, which indicates the linearity in residuals is not true. In the scale-location graph as well, the red line is not flat, which indicates that residual variance is not constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line.However, the Residual Vs Leverage plot has the redline not alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is NOT true here.
 
-### 3.Bayesian Approach
+### 4.Bayesian Approach
 ```{r}
 output <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
 summary(output)
@@ -276,7 +274,6 @@ summary(output)
  
  imageplot.bma(output)
  output$postmean
- 
 ```
 From the above resuls it is clear nitrogen oxides concentration(nox), accessibility to radial highways(rad) and property-tax rate(tax) are the 3 variables -probability they should be in the model
 The model is 
@@ -309,6 +306,8 @@ Score should be high when outcome is 1 and low when outcome is 0. Lets visualize
 #formula
 formula(manual.final)
 summary(manual.final)$coefficients[,4] 
+#fitted.results <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
+#fitted.results <- ifelse(fitted.results > 0.5,1,0)
 
 crime.test$score <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
 
@@ -320,21 +319,21 @@ We can see that the response 0 is bunched around low scores and response 1 is bu
 
 Based on our previous homework, these are some properties of the cutoff/threshold:
 
-All the predicted values above cuto??? will be 1 
-All the predicted values below cuto??? will be 0  
-Response values above cuto???(predicted 1) which are 1 in reality will be noted as TP 
-Response values above cuto???(predicted 1) which are 0 in reality will be noted as FP 
-Response values below cuto???(predicted 0) which are 1 in reality will be noted as FN 
-Response values below cuto???(predicted 0) which are 0 in reality will be noted as TN
+All the predicted values above cutoff will be 1 
+All the predicted values below cutoff will be 0  
+Response values above cutoff(predicted 1) which are 1 in reality will be noted as TP 
+Response values above cutoff(predicted 1) which are 0 in reality will be noted as FP 
+Response values below cutoff(predicted 0) which are 1 in reality will be noted as FN 
+Response values below cutoff(predicted 0) which are 0 in reality will be noted as TN
 
 Based on our visualization, it appears like 0.50 could be a better cutoff.
 ```{r}
 cutoff=0.5
 crime.test$predicted=as.numeric(crime.test$score>cutoff) 
-TP=sum(predicted==1 & crime.test$target==1) 
-FP=sum(predicted==1 & crime.test$target==0) 
-FN=sum(predicted==0 & crime.test$target==1) 
-TN=sum(predicted==0 & crime.test$target==0)
+TP=sum(crime.test$predicted==1 & crime.test$target==1) 
+FP=sum(crime.test$predicted==1 & crime.test$target==0) 
+FN=sum(crime.test$predicted==0 & crime.test$target==1) 
+TN=sum(crime.test$predicted==0 & crime.test$target==0)
 
 # lets also calculate total number of real positives and negatives in the data 
 P=TP+FN 
@@ -351,8 +350,11 @@ sensitivity <- round(sensitivity(factor(crime.test$predicted),crime.test$target,
 
 specificity <- round(specificity(factor(crime.test$predicted),crime.test$target, negative="0"),4)
 
-#a = (TP+TN)/(P+N)
+#accuracy = (TP+TN)/(P+N)
 accuracy <- (TP + TN) / (P + N)
+
+cnfMtx <- confusionMatrix(crime.test$predicted, crime.test$target, positive = "1")
+
 ```
 
 
@@ -368,5 +370,20 @@ auc(factor(predicted)~as.numeric(target),crime.test)
 
 ## Predictions
 
+```{r predictions}
+crime.evl$chas <- as.factor(crime.evl$chas)
+
+crime.prd <- predict(manual.final,newdata=subset(crime.evl,select=c(4,8,9)),type='response')
+crime.prd <- ifelse(crime.prd > 0.5,1,0)
+
+crime.evl$predicted <- crime.prd
+crime.evl$predicted <- factor(crime.evl$predicted)
+
+kable(crime.evl)
+```
 
 ## Appendix
+
+```{r eval=FALSE, echo=TRUE}
+
+```
