@@ -23,6 +23,22 @@ library(BMA)
 ```
 
 ## Overview
+The purpose of this project is to predict if a neighborhood will be at risk for high crime levels using binary logistic regression models. Below is a short description of the variables in the dataset.
+
+- zn: proportion of residential land zoned for large lots (over 25000 square feet)
+- indus: proportion of non-retail business acres per suburb
+- chas: a dummy var. for whether the suburb borders the Charles River (1) or not (0)
+- nox: nitrogen oxides concentration (parts per 10 million)
+- rm: average number of rooms per dwelling
+- age: proportion of owner-occupied units built prior to 1940
+- dis: weighted mean of distances to five Boston employment centers
+- rad: index of accessibility to radial highways
+- tax: full-value property-tax rate per $10,000
+- ptratio: pupil-teacher ratio by town
+- black: 1000 $(B_k - 0.63)^2$ where Bk is the proportion of blacks by town
+- lstat: lower status of the population (percent)
+- medv: median value of owner-occupied homes in $1000s
+- target: whether the crime rate is above the median crime rate (1) or not (0) (response variable)
 
 Dataset  
 [Crime - Training data](https://github.com/Nguyver/DATA621-HW/blob/master/HW3/crime-training-data.csv)  
@@ -30,7 +46,7 @@ Dataset
 
 ## Data Exploration
 
-There are 466 observations, and 14 variables in the given training dataset. The below is a glimpse of the data.
+The dataset contains 466 observations and 14 variables. The response variable is **target** variable. Below is a glimpse of the data.
 ```{r}
 crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
@@ -56,7 +72,7 @@ table(crime.trn$zn)
 Out of 466 values 339 are zeros. So we would like to treat zn as binary, land size over 25,000 sq.ft as 1 and below 25,000 sq.ft as 0
 
 ```{r}
-crime.trn$zn <- ifelse(crime.trn$zn>0, 1, 0)
+#crime.trn$zn <- ifelse(crime.trn$zn>0, 1, 0)
 table(crime.trn$zn)
 
 ```
@@ -75,7 +91,7 @@ cor.matrix <- cor(crime.trn[,1:ncol(crime.trn)])
 chart.Correlation(cor.matrix, histogram=TRUE, pch=19)
 ```
 
-From the above correlation matrix , the target varaible seems to have correlation with 
+From the above correlation matrix , the **target** variable seems to have correlation with 
 
   * zn    - proportion of residential land zoned for large lots 
   * indus - proportion of non-retail business acres per suburb 
