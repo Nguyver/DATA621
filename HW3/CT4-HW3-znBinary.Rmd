@@ -48,10 +48,6 @@ Dataset
 
 ## Data Exploration
 
-- Move Histograms to data exploration (grid)
-- do not remove variables based on correlation
-- possibly remove "tables"
-
 The dataset contains 466 observations and 14 variables. The response variable is the **target** variable. Below is a glimpse of the data.
 ```{r read data}
 crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
@@ -63,14 +59,18 @@ crime.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/mas
 glimpse(crime.trn)
 ```
 
-### A visual take on the missing values might be helpful: 
-The Amelia package has a special plotting function missmap() that will plot your dataset and highlight missing values:
+Taking a closer look at the data with summary statistics, we can see that two values (chas, target) should be converted to factors.
+
+```{r}
+summary(crime.trn)
+```
+
+### Visually assessing missing values: 
+The Amelia package has a plotting function missmap() that will plot the dataset and highlight missing values:
 ```{r}
 missmap(crime.trn, main = "Missing values vs observed")
 ```
-There are no missing values in the dataset.  
-
-There appears to be no missing values. Lets plot the correlation between the variables.
+There are no missing values in the dataset. Lets plot the correlation between the variables.
 
 ```{r, warning=FALSE, message=FALSE}
 cor.matrix <- cor(crime.trn[,1:ncol(crime.trn)])
@@ -89,11 +89,7 @@ From the above correlation matrix , the **target** variable seems to have correl
   * lstat - lower status of the population 
 
 
-FIND A PLACE TO PUT THIS  
-Two variables should be converted to factors.  
-
 Lets look at each of the predictor variable's data:
-
 
 ```{r}
 #proportion of residential land zoned for large lots
@@ -142,7 +138,6 @@ grid.arrange(g_zn, g_indus, g_nox, g_age,g_dis,g_rad,g_tax,g_lstat, ncol=2)
 There is no specific categorizations noticed from the above predictor variables.
 
 ## Data Preparation
-
 
 Convert the *chas* and *target* variables into factors:
 
