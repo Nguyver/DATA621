@@ -10,7 +10,7 @@ knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r, load libraries}
 library(dplyr)
 library(ggplot2)
 library(car)
@@ -46,24 +46,23 @@ Dataset
 
 ## Data Exploration
 
-The dataset contains 466 observations and 14 variables. The response variable is **target** variable. Below is a glimpse of the data.
-```{r}
+The dataset contains 466 observations and 14 variables. The response variable is the **target** variable. Below is a glimpse of the data.
+```{r read data}
 crime.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
 crime.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW3/crime-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+```
 
+```{r}
 glimpse(crime.trn)
-
 ```
 
 ### A visual take on the missing values might be helpful: 
-the Amelia package has a special plotting function missmap() that will plot your dataset and highlight missing values:
+The Amelia package has a special plotting function missmap() that will plot your dataset and highlight missing values:
 ```{r}
-
 missmap(crime.trn, main = "Missing values vs observed")
 ```
 There are no missing values in the dataset.
-
 
 ```{r}
 length(crime.trn$zn)
@@ -119,9 +118,7 @@ table(crime.trn$zn)
 #gives %ges across rows , and rounded by 2 decimals.
 kable(round(prop.table(table(crime.trn$zn, crime.trn$target), 1),2))
 ```
-```{r}
 
-```
 
 From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. When we looked at the average response rates for the zn data, we have identified following categories:
 
@@ -485,7 +482,71 @@ anova(manual.model2, test="Chisq")
 ```
 The difference between the null deviance and the residual deviance shows how our model is doing against the null model (a model with only the intercept). The wider this gap, the better.
 Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
+
 ### 2. Specificity and Sensitivity
+
+```{r metrics_functions}
+accuracy <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4; 
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- (confusion[TP]+confusion[TN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
+  
+  return(value)
+}
+
+classErrorRate <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- (confusion[FP]+confusion[FN])/(confusion[TP]+confusion[FP]+confusion[TN]+confusion[FN])
+  
+  return(value)
+}
+
+precision <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TP]/(confusion[TP]+confusion[FP])
+  
+  return(value)
+}
+
+sensitivity <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TP]/(confusion[TP]+confusion[FN])
+   
+  return(value)
+}
+
+specificity <- function(data, actual.idx=9, predict.idx=10){
+  TP <- 4
+  TN <- 1
+  FP <- 3
+  FN <- 2
+  
+  confusion <- table(data[,actual.idx], data[,predict.idx])
+  value <- confusion[TN]/(confusion[TN]+confusion[FP])
+  
+  return(value)
+}
+```
+
 ### 3. AUC 
 
 ```{r}
@@ -493,7 +554,6 @@ fitted.results <- predict(manual.model2,newdata=subset(crime.test,select=c(3,6,7
 fitted.results <- ifelse(fitted.results > 0.5,1,0)
 table(fitted.results)
 table(crime.test$target)
-
 ```
 
 
