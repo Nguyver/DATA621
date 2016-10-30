@@ -319,3 +319,7 @@ kable(crime.evl)
 ```
 
 ## Appendix
+
+```{r eval=FALSE, echo=TRUE}
+
+```
