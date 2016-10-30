@@ -206,11 +206,11 @@ summary(forwards.model)
 par(mfrow=c(2, 2))
 graphics::plot(backwards.model)
 ```
-From the above two models we can see that zn,& age are not statistically significant.
+From the above two models we can see that zn & age are not statistically significant.
 As for the statistically significant variables, rad & nox have  a strong positive association of crime rate while tax has a negative coefficient, suggests as all other variables being equal as tax increases crime rate decreases.
 
-
-Both Forward and backward elimination models came up with the same model. We next remove variables of low significance. We will remove Zn and age from the above models.
+### 3. Manual
+Both Forward and backward elimination models produced the same model. Using the model obtained from backwards/forwards elimination, we next remove variables of low significance. We will remove Zn and age from the above models.
 
 ```{r}
 manual.model <- glm(target ~ nox + rad + tax + dis,family=binomial(link='logit'),data=crime.train, trace = FALSE)
@@ -231,7 +231,7 @@ graphics::plot(manual.final)
 
 In the residuals Vs Fitted graph, the red line is not flat, which indicates the linearity in residuals is not true. In the scale-location graph as well, the red line is not flat, which indicates that residual variance is not constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line.However, the Residual Vs Leverage plot has the redline not alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is NOT true here.
 
-### 3.Bayesian Approach
+### 4.Bayesian Approach
 ```{r}
 output <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
 summary(output)
