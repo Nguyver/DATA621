@@ -13,11 +13,12 @@ knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```{r, load libraries}
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
 library(car)
 library(recommenderlab)
 library(knitr)
-library(PerformanceAnalytics)
 library(Amelia)
+library(PerformanceAnalytics)
 library(robustbase)
 library(BMA)
 library(caret)
@@ -97,10 +98,8 @@ Lets look at each of the predictor variable's data:
 ```{r}
 #proportion of residential land zoned for large lots
 
-hist(crime.trn$zn, main="Histogram of zn", xlab="zn", border="blue", col="green", las=1)
+g_zn <- ggplot(data = crime.trn) + geom_histogram(aes(x=zn), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 
-#Lets look at the average response rate.
-#gives %ges across rows , and rounded by 2 decimals.
 ```
 
 From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. 
@@ -108,68 +107,76 @@ From the above, it appears like majority of the neighborhoods have no residentia
 Similarly, let's proceed with others
 
 ```{r}
-hist(crime.trn$indus, main="Histogram of Indus", xlab="indus", border="blue", col="green", las=1)
-#round(prop.table(table(crime.trn.new$indus, crime.trn.new$target), 1),2)
+g_indus <- ggplot(data = crime.trn) + geom_histogram(aes(x=indus), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 
 ```{r}
-hist(crime.trn$nox, main="Histogram of nox", xlab="nox", border="blue", col="green", las=1)
-#kable(round(prop.table(table(crime.trn.new$nox, crime.trn.new$target), 1),2))
+g_nox <- ggplot(data = crime.trn) + geom_histogram(aes(x=nox), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 
 ```{r}
-hist(crime.trn$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
-#hist(crime.trn.new$age, main="Histogram of age", xlab="age", border="blue", col="green", las=1)
-#kable(round(prop.table(table(crime.trn.new$age, crime.trn.new$target), 1),2))
+g_age <- ggplot(data = crime.trn) + geom_histogram(aes(x=age), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 Looks like the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization here, so, we leave the variable as is.
 
-
 ```{r}
-hist(crime.trn$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
-#hist(crime.trn.new$dis, main="Histogram of dis", xlab="dis", border="blue", col="green", las=1)
-#kable(round(prop.table(table(crime.trn.new$dis, crime.trn.new$target), 1),2))
+g_dis <- ggplot(data = crime.trn) + geom_histogram(aes(x=dis), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 ```{r}
-hist(crime.trn$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
-#hist(crime.trn.new$rad, main="Histogram of rad", xlab="rad", border="blue", col="green", las=1)
-#kable(round(prop.table(table(crime.trn.new$rad, crime.trn.new$target), 1),2))
+g_rad <- ggplot(data = crime.trn) + geom_histogram(aes(x=rad), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 ```{r}
-hist(crime.trn$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
-#hist(crime.trn.new$tax, main="Histogram of tax", xlab="tax", border="blue", col="green", las=1)
-#kable(round(prop.table(table(crime.trn.new$tax, crime.trn.new$target), 1),2))
+g_tax <- ggplot(data = crime.trn) + geom_histogram(aes(x=tax), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 ```{r}
-hist(crime.trn$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
-#hist(crime.trn.new$lstat, main="Histogram of lstat", xlab="lstat", border="blue", col="green", las=1)
+g_lstat <- ggplot(data = crime.trn) + geom_histogram(aes(x=lstat), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+grid.arrange(g_zn, g_indus, g_nox, g_age,g_dis,g_rad,g_tax,g_lstat, ncol=2)
 ```  
+
+There is no specific categorizations noticed from the above predictor variables.
 
 ## Data Preparation
 
-- address multicolinearity
-- change columns to factors
-- zn variable
-- train/test sets
 
+Convert the *chas* and *target* variables into factors:
 
 ```{r}
-#length(crime.trn$zn)
-#table(crime.trn$zn)
+crime.trn$chas <- as.factor(crime.trn$chas)
+crime.trn$target <- as.factor(crime.trn$target)
 ```
+
 Out of 466 values 339 are zeros. So we would like to treat zn as binary, land size over 25,000 sq.ft as 1 and below 25,000 sq.ft as 0
 
 ```{r}
-crime.trn$zn <- ifelse(crime.trn$zn>0, 1, 0)
+crime.trn$zn <- ifelse(crime.trn$zn > 0, 1, 0)
 table(crime.trn$zn)
 ```
 
+
+Check for Multicolinearity among the predictor variables and remove those with excessive correlation among the explanatory variables. 
+
+The below is the VIF values, lets get rid of those that has got VIF > 10.
+ 
+```{r}
+
+fit <- glm(target ~ . , data=crime.trn, family = binomial)
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- vif(fit)
+
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('VIF')
+kable(vif.df)
+```
+
+From the above table, we do not see multi-colinearity (with VIF > 10) among the predictors.
 
 Also, let's split our dataset into training (80%) and test (20%).
 
@@ -180,24 +187,28 @@ crime.train=crime.trn[s,]
 crime.test=crime.trn[-s,]
 ```
 
-CONVERT INT to FACTORS
-```{r}
-
-
-```
-
 
 ## Build Models
 - Clean up outputs
 - explain coefficients
 - AUC?
 
+
+The below are the few different approaches we will try to build the models:
+
+  1. Stepwise Backward
+  2. Stepwise Forward
+  3. Manuel
+  4. Bayesian
+
 ### 1. Backward elimination method 
 
 family=binomial in the glm() function.
- 1.  Let us start with all the parameters
+
+1.  Let us start with all the parameters
 ```{r}
- fullmodel = glm(target ~.,family=binomial,data =crime.train)
+ names(crime.train)
+ fullmodel = stats::glm(target ~ ., family=binomial(), data =crime.train)
  summary(fullmodel)
 ```
 
@@ -205,7 +216,7 @@ family=binomial in the glm() function.
 backwards.model = step(fullmodel) # Backwards selection is the default
 backwards.formula <- formula(backwards.model)
 backwards.formula
-summary(backwards.model)
+summary(backwards.model) 
 ```
 
 ### 2. Forward elimination method
@@ -214,13 +225,13 @@ summary(backwards.model)
 2. without any parameter
 
 ```{r}
-nothing <- glm(target ~ 1,family=binomial,data =crime.train)
+nothing <- glm(target ~ 1,family=binomial,data =crime.train, trace = FALSE)
 summary(nothing)
 ```
 
 ```{r}
 forwards.model = step(nothing,
-scope=list(lower=formula(nothing),upper=formula(fullmodel)), direction="forward")
+scope=list(lower=formula(nothing),upper=formula(fullmodel)), direction="forward", trace = FALSE)
 forwards.formula <- formula(forwards.model)
 forwards.formula
 summary(forwards.model)
@@ -231,22 +242,26 @@ As for the statistically significant variables, rad & nox have  a strong positiv
 
 Both Forward and backward elimination models came up with the same model. We next remove variables of low significance.
 We would drop out Zn and age from the above models.
+
 ```{r}
-manual.model <- glm(target ~ nox + rad + tax + dis,family=binomial(link='logit'),data=crime.train)
+manual.model <- glm(target ~ nox + rad + tax + dis,family=binomial(link='logit'),data=crime.train, trace = FALSE)
 summary(manual.model)
 ```
 
 We would drop out distance from the above model since the p value is not significant. Now the new model:
 ```{r}
-manual.model2 <- glm(target ~ nox + rad + tax ,family=binomial(link='logit'),data=crime.train)
-summary(manual.model2)
+manual.final <- glm(target ~ nox + rad + tax ,family=binomial(link='logit'),data=crime.train, trace = FALSE)
+summary(manual.final)
 ```
 A unit increase in index of accessibility to radial highways increses the log odds by 0.56. Also unit increase in nitrogen oxides concentration increases the logodds by 33.03, while increase in tax rate reduces the log odds by 0.008.
 
 ```{r}
 par(mfrow=c(2, 2))
-graphics::plot(manual.model2)
+graphics::plot(manual.final)
 ```
+
+In the residuals Vs Fitted graph, the red line is not flat, which indicates the linearity in residuals is not true. In the scale-location graph as well, the red line is not flat, which indicates that residual variance is not constant [homo scadasticity assumption]. The Normal Q-Q graph indicates that the most of the residuals are on the straight line.However, the Residual Vs Leverage plot has the redline not alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is NOT true here.
+
 ### 3.Bayesian Approach
 ```{r}
 output <- bic.glm(target ~., data = crime.train, glm.family = "binomial")
@@ -270,12 +285,11 @@ The model is
 target ~ nox+rad+tax
 
 
-
 ## Select Models
+
 ### 1.  anova() function on the model to analyze the table of deviance
 ```{r}
- 
-anova(manual.model2, test="Chisq")
+anova(manual.final, test="Chisq")
 ```
 The difference between the null deviance and the residual deviance shows how our model is doing against the null model (a model with only the intercept). The wider this gap, the better.
 Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
@@ -283,14 +297,13 @@ Nitrogen oxides concentration is the least deviation, so this variable can be dr
 ### 2. Specificity and Sensitivity
 
 ```{r}
-fitted.results <- predict(manual.model2,newdata=subset(crime.test,select=c(4,8,9)),type='response')
+fitted.results <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
 fitted.results <- ifelse(fitted.results > 0.5,1,0)
 table(fitted.results)
 table(crime.test$target)
 
 crime.test$predicted <- fitted.results
 crime.test$predicted <- factor(crime.test$predicted)
-crime.test$target <- factor(crime.test$target)
 
 #length(fitted.results)
 
@@ -299,6 +312,7 @@ crime.test$target <- factor(crime.test$target)
 ```
 
 ```{r}
+glimpse(crime.test)
 round(sensitivity(crime.test$predicted, 
             crime.test$target, 
             positive="1"), 4)
