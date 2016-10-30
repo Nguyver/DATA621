@@ -14,6 +14,7 @@ knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(e1071)
 library(car)
 library(recommenderlab)
 library(knitr)
@@ -22,6 +23,7 @@ library(PerformanceAnalytics)
 library(robustbase)
 library(BMA)
 library(caret)
+library(pROC)
 ```
 
 ## Overview
@@ -89,49 +91,38 @@ From the above correlation matrix , the **target** variable seems to have correl
   * lstat - lower status of the population 
 
 
-FIND A PLACE TO PUT THIS  
-Two variables should be converted to factors.  
-
 Lets look at each of the predictor variable's data:
 
 
 ```{r}
-#proportion of residential land zoned for large lots
-
-g_zn <- ggplot(data = crime.trn) + geom_histogram(aes(x=zn), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
-
+g_zn <- ggplot(data = crime.trn) + geom_histogram(aes(x=log(zn))) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
-From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. 
-
-Similarly, let's proceed with others
-
 ```{r}
-g_indus <- ggplot(data = crime.trn) + geom_histogram(aes(x=indus), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_indus <- ggplot(data = crime.trn) + geom_histogram(aes(x=indus)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 
 ```{r}
-g_nox <- ggplot(data = crime.trn) + geom_histogram(aes(x=nox), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_nox <- ggplot(data = crime.trn) + geom_histogram(aes(x=nox)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 
 ```{r}
-g_age <- ggplot(data = crime.trn) + geom_histogram(aes(x=age), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_age <- ggplot(data = crime.trn) + geom_histogram(aes(x=age)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
-Looks like the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization here, so, we leave the variable as is.
 
 ```{r}
-g_dis <- ggplot(data = crime.trn) + geom_histogram(aes(x=dis), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
-```
-
-```{r}
-g_rad <- ggplot(data = crime.trn) + geom_histogram(aes(x=rad), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_dis <- ggplot(data = crime.trn) + geom_histogram(aes(x=dis)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 ```{r}
-g_tax <- ggplot(data = crime.trn) + geom_histogram(aes(x=tax), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_rad <- ggplot(data = crime.trn) + geom_histogram(aes(x=rad)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+```
+
+```{r}
+g_tax <- ggplot(data = crime.trn) + geom_histogram(aes(x=log(tax))) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 ```{r}
@@ -139,10 +130,12 @@ g_lstat <- ggplot(data = crime.trn) + geom_histogram(aes(x=lstat), binwidth = 0.
 grid.arrange(g_zn, g_indus, g_nox, g_age,g_dis,g_rad,g_tax,g_lstat, ncol=2)
 ```  
 
-There is no specific categorizations noticed from the above predictor variables.
+From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. And the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization in the other predictors.
+
 
 ## Data Preparation
 
+### Factorize Variables:
 
 Convert the *chas* and *target* variables into factors:
 
@@ -158,6 +151,7 @@ crime.trn$zn <- ifelse(crime.trn$zn > 0, 1, 0)
 table(crime.trn$zn)
 ```
 
+### Check for Multicolinearity in the predictors:
 
 Check for Multicolinearity among the predictor variables and remove those with excessive correlation among the explanatory variables. 
 
@@ -178,6 +172,8 @@ kable(vif.df)
 
 From the above table, we do not see multi-colinearity (with VIF > 10) among the predictors.
 
+### Split the dataset into training and test:
+
 Also, let's split our dataset into training (80%) and test (20%).
 
 ```{r}
@@ -187,6 +183,8 @@ crime.train=crime.trn[s,]
 crime.test=crime.trn[-s,]
 ```
 
+Number of observations in *training* dataset is `r nrow(crime.train)`
+Number of observations in *test* dataset is `r nrow(crime.test)`
 
 ## Build Models
 - Clean up outputs
@@ -198,7 +196,7 @@ The below are the few different approaches we will try to build the models:
 
   1. Stepwise Backward
   2. Stepwise Forward
-  3. Manuel
+  3. Manual
   4. Bayesian
 
 ### 1. Backward elimination method 
@@ -294,41 +292,77 @@ anova(manual.final, test="Chisq")
 The difference between the null deviance and the residual deviance shows how our model is doing against the null model (a model with only the intercept). The wider this gap, the better.
 Nitrogen oxides concentration is the least deviation, so this variable can be dropped from the model.
 
-### 2. Specificity and Sensitivity
+### 2. Performance measures:
+
+Sensitivity is basically the ability of the model to capture all positives.  And Specificity is the ability of the model to capture all negatives.
+
+Sensitivity = $$\frac{TP}{TP+FN}$$
+Specificity = $$\frac{TN}{TN+FP}$$
+
+For an ideal model, the predictions will be perfect - meaning the 'accuracy, sensitivity and specificity' will all be 1 where as the mis-classification error will be zero. In practical scenarios we would like to have the sensitivity and spcificity as close to 1 as possible. Lets see which model provides us with the better measures:
+
+*Manual Model from Forward & Backward Steps* 
+
+Score should be high when outcome is 1 and low when outcome is 0. Lets visualize how our binary response is behaving with respect to the score that we obtained.
 
 ```{r}
-fitted.results <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
-fitted.results <- ifelse(fitted.results > 0.5,1,0)
-table(fitted.results)
-table(crime.test$target)
+#formula
+formula(manual.final)
+summary(manual.final)$coefficients[,4] 
 
-crime.test$predicted <- fitted.results
-crime.test$predicted <- factor(crime.test$predicted)
+crime.test$score <- predict(manual.final,newdata=subset(crime.test,select=c(4,8,9)),type='response')
 
-#length(fitted.results)
+ggplot(crime.test, aes(y=target, x=score, color=factor(target))) + geom_point() + geom_jitter()
 
-#summary(crime.test)
-#nrow(crime.test)
 ```
 
+We can see that the response 0 is bunched around low scores and response 1 is bunched around high scores. However, there is also overlap as well across some scores. We need to find a cutoff in the score so as to reach our target here.
+
+Based on our previous homework, these are some properties of the cutoff/threshold:
+
+All the predicted values above cuto??? will be 1 
+All the predicted values below cuto??? will be 0  
+Response values above cuto???(predicted 1) which are 1 in reality will be noted as TP 
+Response values above cuto???(predicted 1) which are 0 in reality will be noted as FP 
+Response values below cuto???(predicted 0) which are 1 in reality will be noted as FN 
+Response values below cuto???(predicted 0) which are 0 in reality will be noted as TN
+
+Based on our visualization, it appears like 0.50 could be a better cutoff.
 ```{r}
-glimpse(crime.test)
-round(sensitivity(crime.test$predicted, 
-            crime.test$target, 
-            positive="1"), 4)
+cutoff=0.5
+crime.test$predicted=as.numeric(crime.test$score>cutoff) 
+TP=sum(predicted==1 & crime.test$target==1) 
+FP=sum(predicted==1 & crime.test$target==0) 
+FN=sum(predicted==0 & crime.test$target==1) 
+TN=sum(predicted==0 & crime.test$target==0)
 
-round(specificity(crime.test$predicted, 
-                   crime.test$target, 
-                   negative="0"),4)
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+```
 
+
+```{r}
+#glimpse(crime.test)
+confusionMatrix(factor(crime.test$predicted), factor(crime.test$target), positive = "1")
+
+sensitivity <- round(sensitivity(factor(crime.test$predicted),crime.test$target, positive="1"), 4)
+
+specificity <- round(specificity(factor(crime.test$predicted),crime.test$target, negative="0"),4)
+
+#a = (TP+TN)/(P+N)
+accuracy <- (TP + TN) / (P + N)
 ```
 
 
 
 ### 3. AUC 
 
-```{r}
-
+```{r, eval=TRUE, echo=TRUE}
+(roc <- roc(factor(predicted)~as.numeric(target),data=crime.test, plot=FALSE, ci=TRUE))
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+auc(factor(predicted)~as.numeric(target),crime.test)
 ```
 
 
