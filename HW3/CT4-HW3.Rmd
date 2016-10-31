@@ -96,7 +96,7 @@ Lets look at each of the predictor variable's data:
 
 ### Distribution of Predictors:
 ```{r}
-g_zn <- ggplot(data = crime.trn) + geom_histogram(aes(x=log(zn))) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+g_zn <- ggplot(data = crime.trn) + geom_histogram(aes(x=log(zn+1))) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 
 ```{r}
@@ -132,8 +132,9 @@ g_lstat <- ggplot(data = crime.trn) + geom_histogram(aes(x=lstat)) +  theme(axis
 grid.arrange(g_zn, g_indus, g_nox, g_age,g_dis,g_rad,g_tax,g_lstat, ncol=2)
 ```  
 
-
-From the above, it appears like majority of the neighborhoods have no residential land zoned for large lots. And the buildings with age > 100 are mentioned as 100 in the above. We could not derive a specific categorization in the other predictors.
+From the graphs above, the majority of the neighborhoods have no residential land zoned for large lots. Since log(0) is undefine, we performed a log(zn+1) graph to circumvent the undefined value.
+  
+We could not derive a specific categorization in the other predictors.
 
 ## Data Preparation
 
@@ -187,7 +188,7 @@ Number of observations in *test* dataset is `r nrow(crime.test)`
 
 ## Build Models
 
-The below are the few different approaches we will try to build the models:
+Below are the different approaches we will use to build the models:
 
   1. Stepwise Backward
   2. Stepwise Forward
@@ -210,7 +211,7 @@ backwards.formula
 summary(backwards.model) 
 ```
 
-From the above table, the nox, rad predictors shows low p-value. A unit increase in  nitrogen oxides concentration increases the log odds by 47.07, while increase in rad increases the log odds by 0.61. The next significant predictors are dis and ptratio.
+From the above table, *nox* and *rad* predictors shows low p-value. A unit increase in nitrogen oxides concentration increases the log odds by 47.07, while increase in rad increases the log odds by 0.61. The next significant predictors are *dis* and *ptratio*.
 
 ```{r}
 par(mfrow=c(2, 2))
@@ -221,7 +222,7 @@ In the residuals Vs Fitted graph, the red line is not flat, which indicates the 
 
 ### 2. Forward elimination method
 
-With forward elimination, we start with an empty candidate set of parameters and iteratively add variables using AIC.
+With Forward elimination, we start with an empty candidate set of parameters and iteratively add variables using AIC.
 
 ```{r}
 nothing <- glm(target ~ 1,family=binomial,data =crime.train, trace = FALSE)
@@ -236,7 +237,7 @@ forwards.formula
 summary(forwards.model)
 ```
 
-From the above table, the nox, rad, medv predictors shows low p-value. A unit increase in  nitrogen oxides concentration increases the log odds by 39.65, while increase in rad increases the log odds by 0.69 and a unit increase in mdev increases the log odds by 0.16.
+From the above table, *nox*, *rad*, and *medv* predictors shows low p-value. A unit increase in  nitrogen oxides concentration increases the log odds by 39.65, while increase in rad increases the log odds by 0.69 and a unit increase in mdev increases the log odds by 0.16.
 
 ```{r}
 par(mfrow=c(2, 2))
@@ -366,10 +367,7 @@ specificity <- round(specificity(factor(crime.test$predicted),crime.test$target,
 accuracy <- round( ( (TP + TN) / (P + N) ) , 4)
 
 cnfMtx <- confusionMatrix(crime.test$predicted, crime.test$target, positive = "1")
-
-
 ```
-
 
 ### AUC for Manual model
 
@@ -380,7 +378,6 @@ graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
 
 performance.results <- rbind(performance.results, c("Manual",sensitivity, specificity,  accuracy, auc))
 ```
-
 
 *Apply the performance measures on the Forward Elimination model* 
 
