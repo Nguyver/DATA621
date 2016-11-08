@@ -1,0 +1,179 @@
+---
+title: "Critical Thinking Group 4 - HW4- Auto Insurance"
+author: "Sreejaya, Suman, Vuthy"
+date: "November 7, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+```
+
+
+```{r, load libraries}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(e1071)
+library(car)
+library(recommenderlab)
+library(knitr)
+library(Amelia)
+library(PerformanceAnalytics)
+library(robustbase)
+library(BMA)
+library(caret)
+library(pROC)
+```
+
+## Overview
+The purpose of this project is to predict the probability that a person will crash their car and also the amount of money it will cost if the person does crash their car multiple linear regression and binary logistic regression models. Below is a short description of the variables in the dataset.
+
+-INDEX:           Identification Variable (do not use) None  
+-TARGET_FLAG:     Was Car in a crash? 1=YES 0=NO None  
+-TARGET_AMT:      If car was in a crash, what was the cost None  
+-AGE:             Age of Driver Very   
+                    young people tend to be risky. Maybe very old people also.  
+-BLUEBOOK:        Value of Vehicle   
+                    Unknown effect on probability of collision, but probably effect the payout if there is a crash  
+-CAR_AGE:         Vehicle Age   
+                    Unknown effect on probability of collision, but probably effect the payout if there is a crash  
+-CAR_TYPE:        Type of Car   
+                    Unknown effect on probability of collision, but probably effect the payout if there is a crash  
+-CAR_USE:         Vehicle Use   
+                    Commercial vehicles are driven more, so might increase probability of collision  
+-CLM_FREQ:        # Claims (Past 5 Years)   
+                    The more claims you filed in the past, the more you are likely to file in the future  
+-EDUCATION:       Max Education Level   
+                    Unknown effect, but in theory more educated people tend to drive more safely  
+-HOMEKIDS:        # Children at Home   
+                    Unknown effect  
+-HOME_VAL:        Home Value In theory,   
+                    home owners tend to drive more responsibly  
+-INCOME:          Income In theory,   
+                    rich people tend to get into fewer crashes  
+-JOB:             Job Category In theory,   
+                    white collar jobs tend to be safer  
+-KIDSDRIV:        # Driving Children When teenagers drive your car,   
+                    you are more likely to get into crashes  
+-MSTATUS:         Marital Status In theory,   
+                    married people drive more safely  
+-MVR_PTS:         Motor Vehicle Record Points     
+                    If you get lots of traffic tickets, you tend to get into more crashes  
+-OLDCLAIM:        Total Claims (Past 5 Years)   
+                    If your total payout over the past five years was high, this suggests future payouts will be high  
+-PARENT1:         Single Parent Unknown effect  
+-RED_CAR:         A Red Car   
+                    Urban legend says that red cars (especially red sports cars) are more risky. Is that true?  
+-REVOKED:         License Revoked (Past 7 Years)   
+                    If your license was revoked in the past 7 years, you probably are a more risky driver.  
+-SEX:             Gender   
+                    Urban legend says that women have less crashes then men. Is that true?  
+-TIF:              Time in Force   
+                    People who have been customers for a long time are usually more safe.  
+-TRAVTIME:        Distance to Work   
+                    Long drives to work usually suggest greater risk  
+-URBANICITY:      Home/Work Area   
+                    Unknown  
+-YOJ:             Years on Job   
+                    People who stay at a job for a long time are usually more safe  
+
+Dataset  
+[Crime - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv)  
+[Crime - Evaluation Data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance-evaluation-data.csv)
+
+## Data Exploration
+
+The dataset contains 8000 observations and 26 variables. Each record has two response variables. **TARGET_FLAG** and **TARGET_AMT** Below is a glimpse of the data. A quick look indicates that chas and target might be classification variables.
+```{r read data}
+insurance.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+insurance.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+```
+
+```{r}
+glimpse(insurance.trn)
+```
+
+```{r}
+summary(insurance.trn)
+```
+Taking a closer look at the data with summary statistics, we can see that PARENT1, SEX, MSTATUS, CAR_USE, RED_CAR, REVOKED, URBANICITY should be converted to factors.
+
+### Visually assessing missing values: 
+The Amelia package has a plotting function missmap() that will plot the dataset and highlight missing values:
+```{r}
+missmap(insurance.trn, main = "Missing values vs observed")
+```
+There are missing values in CAR_AGE (510), YOJ (454) and AGE (6).
+
+### Get rid of unnecessory variables:
+"INDEX" is just a number assigned to each record. It is nothing more than an arbitrary identifier;  so we can remove it:
+```{r}
+insurance.trn$INDEX <- NULL
+```
+
+
+## Data Preparation
+
+### Factorize Variables:
+
+Convert the ** PARENT1, SEX, MSTATUS, CAR_USE, RED_CAR, REVOKED, URBANICITY ** variables into factors:
+
+```{r echo=TRUE}
+insurance.trn$PARENT1 <- as.factor(insurance.trn$PARENT1)
+insurance.trn$SEX <- as.factor(insurance.trn$SEX)
+insurance.trn$MSTATUS <- as.factor(insurance.trn$MSTATUS)
+insurance.trn$CAR_USE <- as.factor(insurance.trn$CAR_USE)
+insurance.trn$RED_CAR <- as.factor(insurance.trn$RED_CAR)
+insurance.trn$REVOKED <- as.factor(insurance.trn$REVOKED)
+insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
+```
+
+### Handling missing data
+1. There are 510 NA's in CAR_AGE, so it is not a good idea to throw these records away.
+```{r}
+hist( insurance.trn$CAR_AGE)
+```
+From the histogram, we see that CAR_AGE between 5 and 15 are the most common, But there is one record with negative value, which should be replaced. 
+so filling in NA's/negative value  with  mean(8) or median(8.33) would be entirely reasonable. Let's fill in the NA's/negative value with the mean value of 8:
+
+```{r}
+meanVal <- 8
+
+insurance.trn$CAR_AGE<- ifelse( insurance.trn$CAR_AGE <=0 , meanVal, insurance.trn$CAR_AGE)
+insurance.trn$CAR_AGE<- ifelse(is.na( insurance.trn$CAR_AGE )==TRUE, meanVal, insurance.trn$CAR_AGE)
+
+summary(insurance.trn$CAR_AGE)
+```
+2. There are 454 NA's in YOJ, so it is not a good idea to throw these records away.
+```{r}
+hist( insurance.trn$YOJ)
+```
+From the histogram, we see that YOJ between 8 and 12 are the most common, 
+so filling in NA's  with  mean(10.5) or median(11) would be entirely reasonable.
+Let's fill in the NA's with the median 11:
+```{r}
+medianVal <- 11
+
+insurance.trn$YOJ<- ifelse(is.na( insurance.trn$YOJ )==TRUE, medianVal, insurance.trn$YOJ)
+
+summary(insurance.trn$YOJ)
+```
+
+Let us consider outliars for AGE before removing NA's
+
+```{r}
+boxplot( insurance.trn$AGE )
+hist( insurance.trn$AGE)
+```
+Since the mean, and median are approximately equal to each other, data is approximately symmetrical and there are no outliars. Mean=44.79 and Median =45. So let's fill in the NA's with the median 45:
+```{r}
+medianVal <- 45
+
+insurance.trn$AGE<- ifelse(is.na( insurance.trn$AGE )==TRUE, medianVal, insurance.trn$AGE)
+
+summary(insurance.trn$AGE)
+```
+
