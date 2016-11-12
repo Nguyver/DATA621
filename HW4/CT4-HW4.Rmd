@@ -25,11 +25,11 @@ options(expressions = 500000)
 # library(PerformanceAnalytics)
 # library(robustbase)
 # library(BMA)
-# library(caret)
-# library(pROC)
+ library(caret)
+ library(pROC)
 ```
 
-## Overview
+# Overview
 The purpose of this project is to predict the probability that a person will crash their car and the amount of money it will cost if the person does crash their car using multiple linear regression and binary logistic regression models.  
 
 **Dataset**  
@@ -45,7 +45,7 @@ data_desc <- read.csv(desc)
 kable(data_desc[,1:2])
 ```
 
-## Data Exploration
+# Data Exploration
 
 ```{r read data}
 insurance.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
@@ -115,15 +115,17 @@ The following variables have missing values:
 | YOJ           | 454  |
 
 
-## Data Preparation
+# Data Preparation
 
-### Remove unnecessory variables:
+### Remove unnecessory variables 
+
 "INDEX" is nothing more than an arbitrary identifier that provides no predictive value. It will be removed from the data set.  
 ```{r echo=TRUE}
 insurance.trn$INDEX <- NULL
 ```
 
-### Clean up data
+### Clean up data 
+
 Dollar signs and commas need to be removed from **INCOME, HOME_VAL, BLUEBOOK, OLDCLAIM**
 
 ```{r}
@@ -494,4 +496,107 @@ Number of observations in *training* dataset is `r nrow(insurance.training)`
 Number of observations in *test* dataset is `r nrow(insurance.test)`
 
 
-##3. Build  Models
+#Build  Models
+
+###BINARY LOGISTIC REGRESSION MODELS
+
+Build different logistic models to predict the probability of TARGET_FLAG
+
+####Stepwise Logistic Regression:
+
+```{r}
+fit.log <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT , family=binomial(), data =insurance.training)
+model.step.log = step(fit.log , trace = FALSE) 
+summary(model.step.log) 
+formula(model.step.log)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.step.log, main="Stepwise Regression")
+```
+
+
+###MULTIPLE LINEAR REGRESSION MODELS
+
+Build different linear models to predict the amount for TARGET_AMT
+
+####Stepwise Linear Regression:
+
+```{r, message=FALSE, warning=FALSE}
+fit.mlr <- lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
+model.step.mlr <- step(fit.mlr, trace=FALSE)
+summary(model.step.mlr)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.step.mlr, main="Stepwise Regression")
+```
+
+
+
+
+#Model Selection
+
+### Logistic Regression:
+
+Measure performance among different models and select one
+
+#### Stepwise Regression Performance:
+
+Finding Score  & performance based on test data:
+
+```{r}
+insurance.test$score=predict(model.step.log,insurance.test,type="response")
+ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG)))+geom_point()+geom_jitter()
+```
+
+Based on our visualization, it appears like 0.30 could be a better cutoff (?).
+```{r}
+cutoff=0.3
+insurance.test$predicted=as.numeric(insurance.test$score>cutoff) 
+TP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==1) 
+FP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==0) 
+FN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==1) 
+TN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==0)
+
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+```
+
+```{r}
+confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_FLAG), positive = "1")
+
+(sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4))
+
+(specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4))
+
+#accuracy = (TP+TN)/(P+N)
+(accuracy <- round( ( (TP + TN) / (P + N) ) , 4))
+
+(cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1"))
+```
+
+
+
+### Mulitple Linear Regression:
+
+Measure performance among Mulitple Linear Regression models and select one
+
+#### Stepwise Regression Performance:
+
+Performance on the test data:
+
+```{r}
+
+#Adjusted R squared
+(ar2 <-  summary(model.step.mlr)$adj.r.squared)
+
+
+#Root mean sqaure error:
+(rmse=sqrt(mean((predict(model.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)))
+
+plot(insurance.test$TARGET_AMT,predict(model.step.mlr,insurance.test))
+#hist(model.step.mlr$residuals,breaks = 20)
+```
+
+
