@@ -8,18 +8,20 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+options(scipen=999)
+options(expressions = 500000)
 ```
 
 
 ```{r, load libraries}
  library(dplyr)
-# library(ggplot2)
-# library(gridExtra)
+ library(ggplot2)
+ library(gridExtra)
 # library(e1071)
-# library(car)
-# library(recommenderlab)
+ library(car)
+ library(recommenderlab)
  library(knitr)
- library(Amelia)
+# library(Amelia)
 # library(PerformanceAnalytics)
 # library(robustbase)
 # library(BMA)
@@ -125,25 +127,27 @@ insurance.trn$INDEX <- NULL
 Dollar signs and commas need to be removed from **INCOME, HOME_VAL, BLUEBOOK, OLDCLAIM**
 
 ```{r echo=TRUE}
-pattern1 <- '\\$*|,'
-replacement <- ''
-
-insurance.trn$INCOME <- as.integer(gsub(pattern1,replacement, x=insurance.trn$INCOME))
-insurance.trn$HOME_VAL <- as.integer(gsub(pattern1,replacement, x=insurance.trn$HOME_VAL))
-insurance.trn$BLUEBOOK <- as.integer(gsub(pattern1,replacement, x=insurance.trn$BLUEBOOK))
-insurance.trn$OLDCLAIM <- as.integer(gsub(pattern1,replacement, x=insurance.trn$OLDCLAIM))
+cleanUpData <- function(amount) {
+  return(as.numeric(gsub("\\$*|,", "", amount)))
+}
+insurance.trn$INCOME <- sapply(insurance.trn$INCOME, cleanUpAmounts)
+insurance.trn$HOME_VAL <- sapply(insurance.trn$HOME_VAL, cleanUpAmounts)
+insurance.trn$BLUEBOOK <- sapply(insurance.trn$BLUEBOOK, cleanUpAmounts)
+insurance.trn$OLDCLAIM <- sapply(insurance.trn$OLDCLAIM, cleanUpAmounts)
 ```
 'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
 
 ```{r echo=TRUE}
-pattern1 <- 'z_'
-replacement <- ''
+cleanUpPrefix <- function(stringVal) {
+  return(gsub('z_', '', stringVal))
+}
 
-insurance.trn$MSTATUS <- gsub(pattern1,replacement, x=insurance.trn$MSTATUS)
-insurance.trn$SEX <- gsub(pattern1,replacement, x=insurance.trn$SEX)
-insurance.trn$EDUCATION <- gsub(pattern1,replacement, x=insurance.trn$EDUCATION)
-insurance.trn$JOB <- gsub(pattern1,replacement, x=insurance.trn$JOB)
-insurance.trn$CAR_TYPE <- gsub(pattern1,replacement, x=insurance.trn$CAR_TYPE)
+insurance.trn$MSTATUS <- sapply(insurance.trn$MSTATUS, cleanUpPrefix)
+insurance.trn$SEX <- sapply(insurance.trn$SEX, cleanUpPrefix)
+insurance.trn$EDUCATION <- sapply(insurance.trn$EDUCATION, cleanUpPrefix)
+insurance.trn$JOB <- sapply(insurance.trn$JOB, cleanUpPrefix)
+insurance.trn$CAR_TYPE <- sapply(insurance.trn$CAR_TYPE, cleanUpPrefix)
+
 ```
 
 ### Factorize Variables:
@@ -164,49 +168,145 @@ insurance.trn$REVOKED <- as.factor(insurance.trn$REVOKED)
 insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
 ```
 
-### Handling missing data
-1. There are 510 NA's in CAR_AGE, so it is not a good idea to throw these records away.
 ```{r}
-hist( insurance.trn$CAR_AGE)
+insurance.trn$OLDCLAIM_YRLY_AVG <- insurance.trn$OLDCLAIM / 5
+```
+
+### Handling missing data 
+
+*1. CAR_AGE - There are 510 NA's in CAR_AGE, so it is not a good idea to throw these records away.* 
+
+```{r}
+ggplot(data = insurance.trn) + geom_histogram(aes(x=CAR_AGE), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
 From the histogram, we see that CAR_AGE between 5 and 15 are the most common, But there is one record with negative value, which should be replaced. 
-so filling in NA's/negative value  with  mean(8) or median(8.33) would be entirely reasonable. Let's fill in the NA's/negative value with the mean value of 8:
+so filling in NA's/negative value  with  median(8) or mean(8.33) would be entirely reasonable. Let's fill in the NA's/negative value with the median value of 8: 
 
 ```{r}
-meanVal <- 8
+(meanVal <- mean(insurance.trn$CAR_AGE, na.rm=TRUE))
+(medianVal <- median(insurance.trn$CAR_AGE, na.rm=TRUE))
 
-insurance.trn$CAR_AGE<- ifelse( insurance.trn$CAR_AGE <=0 , meanVal, insurance.trn$CAR_AGE)
-insurance.trn$CAR_AGE<- ifelse(is.na( insurance.trn$CAR_AGE )==TRUE, meanVal, insurance.trn$CAR_AGE)
+insurance.trn$CAR_AGE<- ifelse( insurance.trn$CAR_AGE <=0 , medianVal, insurance.trn$CAR_AGE)
+insurance.trn$CAR_AGE<- ifelse(is.na( insurance.trn$CAR_AGE )==TRUE, medianVal, insurance.trn$CAR_AGE)
 
 summary(insurance.trn$CAR_AGE)
 ```
-2. There are 454 NA's in YOJ, so it is not a good idea to throw these records away.  
+So, as shown above, after we imputing the CAR_AGE, the mean value is consistent/close to the original mean.
+
+*2. YOJ - There are 454 NA's in YOJ, so it is not a good idea to throw these records away.*  
+
 ```{r}
-hist( insurance.trn$YOJ)
+ggplot(data = insurance.trn) + geom_histogram(aes(x=YOJ), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
 ```
-From the histogram, we see that YOJ between 8 and 12 are the most common, 
-so filling in NA's  with  mean(10.5) or median(11) would be entirely reasonable.
+From the histogram, we see that YOJ between 8 and 12 are the most common, so filling in NA's  with  mean(10.5) or median(11) would be entirely reasonable.
 Let's fill in the NA's with the median 11:
 ```{r}
-medianVal <- 11
+(medianVal <- median(insurance.trn$YOJ, na.rm=TRUE))
 
 insurance.trn$YOJ<- ifelse(is.na( insurance.trn$YOJ )==TRUE, medianVal, insurance.trn$YOJ)
 
 summary(insurance.trn$YOJ)
 ```
 
-Let us consider outliars for AGE before removing NA's
+*3. AGE - Let us consider outliars for AGE before removing NA's* 
 
 ```{r}
-boxplot( insurance.trn$AGE )
-hist( insurance.trn$AGE)
+boxAge <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=AGE)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+histAge <- ggplot(data = insurance.trn) + geom_histogram(aes(x=AGE), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+grid.arrange(boxAge, histAge, ncol=2,  top = "AGE: Box Plot & Histogram")
 ```
 Since the mean, and median are approximately equal to each other, data is approximately symmetrical and there are no outliars. Mean=44.79 and Median =45. So let's fill in the NA's with the median 45:
 ```{r}
-medianVal <- 45
+(medianVal <- median(insurance.trn$AGE, na.rm=TRUE))
 
 insurance.trn$AGE<- ifelse(is.na( insurance.trn$AGE )==TRUE, medianVal, insurance.trn$AGE)
 
 summary(insurance.trn$AGE)
+
 ```
+
+*3. INCOME - Transformation* 
+
+```{r}
+boxIncome <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+histIncome <- ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+grid.arrange(boxIncome, histIncome, ncol=2,  top = "INCOME: Box Plot & Histogram")
+```
+
+From the above, its clear that the INCOME distribution is positively skewed, So, lets consider transforming it using log base 10.
+```{r}
+#reference: https://www.youtube.com/watch?v=_c3dVTRIK9c
+Xfrmlog10 = function(x) {
+   return (logb(x+1, 10))
+}
+
+#First lets put zeroes where its NA & then transform using signedlog10
+insurance.trn$INCOME <- ifelse(is.na( insurance.trn$INCOME)==TRUE, 0, insurance.trn$INCOME)
+insurance.trn$INCOME_LOG <- sapply(insurance.trn$INCOME, Xfrmlog10)
+
+summary(insurance.trn$INCOME_LOG)
+
+#Now impute the zeros with median
+insurance.trn$INCOME_LOG<- ifelse(insurance.trn$INCOME_LOG ==0, median(insurance.trn$INCOME_LOG), insurance.trn$INCOME_LOG)
+
+summary(insurance.trn$INCOME_LOG)
+
+ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME_LOG), binwidth =0.1 ) + ggtitle("INCOME LOG base 10 - Hist")+ theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) 
+  
+```
+
+Though there is a slight negative skewness, overall this transformation looks better (nearly normal) than the original distribution.
+
+*4. HOME_VAL - Transformation* 
+
+```{r}
+boxHomeVal <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+histHomeVal <- ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+grid.arrange(boxHomeVal, histHomeVal, ncol=2,  top = "HOME_VAL: Box Plot & Histogram")
+```
+
+From the above, its clear that the HOME_VAL distribution is slightly positively skewed, So, lets consider transforming it using log base 10.
+```{r}
+#reference: https://www.youtube.com/watch?v=_c3dVTRIK9c
+
+#First lets put zeroes where its NA & then transform using signedlog10
+insurance.trn$HOME_VAL <- ifelse(is.na( insurance.trn$HOME_VAL)==TRUE, 0, insurance.trn$INCOME)
+insurance.trn$HOME_VAL_LOG <- sapply(insurance.trn$HOME_VAL, Xfrmlog10)
+
+summary(insurance.trn$HOME_VAL_LOG)
+
+#Now impute the zeros with median
+insurance.trn$HOME_VAL_LOG<- ifelse(insurance.trn$HOME_VAL_LOG ==0, median(insurance.trn$HOME_VAL_LOG), insurance.trn$HOME_VAL_LOG)
+
+summary(insurance.trn$HOME_VAL_LOG)
+
+ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL_LOG), binwidth =0.1 ) + ggtitle("HOME_VAL_LOG - Hist")+ theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) 
+  
+```
+
+Though there is a slight negative skewness, overall this transformation looks better (nearly normal) than the original distribution.
+
+### Dummy Variables
+
+Look for dummy variables:
+
+```{r}
+table(insurance.trn$JOB)
+round(prop.table(table(insurance.trn$JOB,insurance.trn$TARGET_FLAG),1),2)
+
+table(insurance.trn$JOB)
+round(prop.table(table(insurance.trn$JOB,insurance.trn$TARGET_FLAG),1),2)
+
+table(insurance.trn$EDUCATION)
+round(prop.table(table(insurance.trn$EDUCATION,insurance.trn$TARGET_FLAG),1),2)
+
+table(insurance.trn$CAR_TYPE)
+round(prop.table(table(insurance.trn$CAR_TYPE,insurance.trn$TARGET_FLAG),1),2)
+```
+
+
+
+
+
+
 
