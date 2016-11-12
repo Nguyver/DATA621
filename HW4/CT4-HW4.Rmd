@@ -28,7 +28,13 @@ knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 ```
 
 ## Overview
-The purpose of this project is to predict the probability that a person will crash their car and also the amount of money it will cost if the person does crash their car using multiple linear regression and binary logistic regression models. Below is a short description of the variables in the dataset.  
+The purpose of this project is to predict the probability that a person will crash their car and the amount of money it will cost if the person does crash their car using multiple linear regression and binary logistic regression models.  
+
+**Dataset**  
+[Insurance - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv)  
+[Insurance - Evaluation Data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance-evaluation-data.csv)  
+
+Below is a short description of the variables in the dataset.  
 
 ```{r}
 desc <- 'data_desc.csv'
@@ -37,18 +43,20 @@ data_desc <- read.csv(desc)
 kable(data_desc[,1:2])
 ```
 
-Dataset  
-[Insurance - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv)  
-[Insurance - Evaluation Data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance-evaluation-data.csv)
-
 ## Data Exploration
 
-The dataset contains 8000 observations and 26 variables. Each record has two response variables. **TARGET_FLAG** and **TARGET_AMT** Below is a glimpse of the data. A quick look indicates that chas and target might be classification variables.
 ```{r read data}
 insurance.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 
 insurance.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 ```
+The dataset contains roughly 8000 observations and 26 variables. Each record has two response variables. 
+
+- TARGET_FLAG
+- TARGET_AMT 
+
+Running the glimpse() function on the dataset reveals that a few variables are of the wrong data type. 
+Below is a glimpse of the data. A quick look indicates that chas and target might be classification variables.
 
 ```{r}
 glimpse(insurance.trn)
@@ -59,12 +67,20 @@ summary(insurance.trn)
 ```
 Taking a closer look at the data with summary statistics, we can see that PARENT1, SEX, MSTATUS, CAR_USE, RED_CAR, REVOKED, URBANICITY should be converted to factors.
 
+```{r eval=FALSE}
 ### Visually assessing missing values: 
 The Amelia package has a plotting function missmap() that will plot the dataset and highlight missing values:
-```{r}
+
 missmap(insurance.trn, main = "Missing values vs observed")
 ```
-There are missing values in CAR_AGE (510), YOJ (454) and AGE (6).
+The following variables have missing values:  
+
+| Variable Name | # NA |
+|---------------|------|
+| AGE           | 6    |
+| CAR_AGE       | 510  |
+| YOJ           | 454  |
+
 
 ### Get rid of unnecessory variables:
 "INDEX" is just a number assigned to each record. It is nothing more than an arbitrary identifier;  so we can remove it:
