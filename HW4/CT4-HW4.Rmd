@@ -126,8 +126,8 @@ insurance.trn$INDEX <- NULL
 ### Clean up data
 Dollar signs and commas need to be removed from **INCOME, HOME_VAL, BLUEBOOK, OLDCLAIM**
 
-```{r echo=TRUE}
-cleanUpData <- function(amount) {
+```{r}
+cleanUpAmounts <- function(amount) {
   return(as.numeric(gsub("\\$*|,", "", amount)))
 }
 insurance.trn$INCOME <- sapply(insurance.trn$INCOME, cleanUpAmounts)
@@ -169,7 +169,7 @@ insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
 ```
 
 ```{r}
-insurance.trn$OLDCLAIM_YRLY_AVG <- insurance.trn$OLDCLAIM / 5
+#insurance.trn$OLDCLAIM_YRLY_AVG <- insurance.trn$OLDCLAIM / 5
 ```
 
 ### Handling missing data 
@@ -225,7 +225,7 @@ summary(insurance.trn$AGE)
 
 ```
 
-*3. INCOME - Transformation* 
+*4. INCOME - Transformation* 
 
 ```{r}
 boxIncome <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
@@ -257,7 +257,7 @@ ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME_LOG), binwidth =0.1 )
 
 Though there is a slight negative skewness, overall this transformation looks better (nearly normal) than the original distribution.
 
-*4. HOME_VAL - Transformation* 
+*5. HOME_VAL - Transformation* 
 
 ```{r}
 boxHomeVal <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
@@ -376,19 +376,122 @@ insurance.trn = insurance.trn %>% mutate(REVOKED=as.numeric(REVOKED  == "Yes" ))
 
 *SEX - Urban legend says that women have less crashes then men. Is that true?*
 
+Lets just consider adding a dummy variable 'MALE' or not.
 ```{r}
 round(prop.table(table(insurance.trn$SEX,insurance.trn$TARGET_FLAG),1),2)
 insurance.trn = insurance.trn %>% mutate(MALE=as.numeric(SEX  == "M" ))  %>% select(-SEX)
 ```
 
-*The other variables - BLUEBOOK,CAR_AGE,CAR_TYPE , has UNKNOWN effect, per data_desc*
+*The other variables - BLUEBOOK,CAR_AGE,CAR_TYPE , has 'Unknown effect on probability of collision, but probably effect the payout if there is a crash', per data_desc*
 
+We will leave the numeric variables BLUEBOOK, CAR_AGE 'as it is', and create the dummy variables for CAR_TYPE, so we would have the CAR_TYPE also numeric. 
+
+```{r}
+round(prop.table(table(insurance.trn$CAR_TYPE,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(CAR_TYPE_vAN=as.numeric(CAR_TYPE == "Van"),
+                                         CAR_TYPE_SUV=as.numeric(CAR_TYPE == "SUV"),
+                                         CAR_TYPE_SPORTS=as.numeric(CAR_TYPE == "Sports Car"),
+                                         CAR_TYPE_PICKUP=as.numeric(CAR_TYPE == "Pickup"),
+                                         CAR_TYPE_PANTRUCK=as.numeric(CAR_TYPE == "Panel Truck")) %>% 
+                                  select(-CAR_TYPE)
+
+```
+
+*Single Parent - Unknown effect*
+
+Lets make it numeric.
+
+```{r}
+round(prop.table(table(insurance.trn$PARENT1,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(PARENT1=as.numeric(PARENT1  == "Yes" ))
+```
+
+*URBANICITY - Home/Work Area*
+
+Lets make it numeric.
+
+```{r}
+round(prop.table(table(insurance.trn$URBANICITY,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(URBAN=as.numeric(URBANICITY  == "Highly Urban/ Urban")) %>% 
+                                  select(-URBANICITY)
+```
 
 After adding the dummy variables, here's a glimpse of our final dataset after dummy variables.
 
 ```{r}
 glimpse(insurance.trn)
+summary(insurance.trn)
 ```
 
 
+Now , all of our data has got all numeric vas and ready for modelling process.
 
+### Check for Multicolinearity in the predictors:
+
+Check for Multicolinearity among the predictor variables and remove those with excessive correlation among the explanatory variables. 
+
+```{r}
+
+#alias(glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial"))
+fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- vif(fit)
+
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+kable(vif.df)
+```
+
+From the above table, we do see multi-colinearity (with VIF > 10) among the predictors - INCOME and HOME_VAL_LOG, INCOME_LOG variables. 
+Lets eliminate INCOME and see first:
+
+```{r}
+insurance.trn$INCOME <- NULL
+fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- vif(fit)
+
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+kable(vif.df)
+```
+
+We still have got high VIF variables - HOME_VAL_LOG and INCOME_LOG. Lets try with HOME_VAL_LOG first.
+
+```{r}
+insurance.trn$HOME_VAL_LOG <- NULL
+fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- vif(fit)
+
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+kable(vif.df)
+```
+
+Perfect, now all the VIF values are below 10, and we are good to proceed.
+
+###Split the dataset into training and test:
+
+We will randomly split our dataset into training (80%) and test (20%).
+
+```{r echo=TRUE}
+set.seed(999) 
+s=sample(1:nrow(insurance.trn),0.80*nrow(insurance.trn)) 
+insurance.training=insurance.trn[s,] 
+insurance.test=insurance.trn[-s,]
+```
+
+Number of observations in *training* dataset is `r nrow(insurance.training)` 
+
+Number of observations in *test* dataset is `r nrow(insurance.test)`
+
+
+##3. Build  Models
