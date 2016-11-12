@@ -288,25 +288,107 @@ Though there is a slight negative skewness, overall this transformation looks be
 
 ### Dummy Variables
 
-Look for dummy variables:
+Look for dummy variables in the categorical variables:
+
+We can chose to make n-1 dummy varaibles, Or, check if response behaviour is similar across frew of these categories and merge them.
+
+*CAR USE - Commercial vehicles are driven more, so might increase probability of collision* 
 
 ```{r}
-table(insurance.trn$JOB)
-round(prop.table(table(insurance.trn$JOB,insurance.trn$TARGET_FLAG),1),2)
+round(prop.table(table(insurance.trn$CAR_USE,insurance.trn$TARGET_FLAG),1),2)
+```
 
-table(insurance.trn$JOB)
-round(prop.table(table(insurance.trn$JOB,insurance.trn$TARGET_FLAG),1),2)
+```{r}
+insurance.trn = insurance.trn %>% mutate(CARUSE_COMMERCIAL=as.numeric(CAR_USE=="Commercial"))  %>% select(-CAR_USE)
+```
 
+*EDUCATION - In theory more educated people tend to drive more safely* 
+
+```{r}
 table(insurance.trn$EDUCATION)
 round(prop.table(table(insurance.trn$EDUCATION,insurance.trn$TARGET_FLAG),1),2)
+```
 
-table(insurance.trn$CAR_TYPE)
+Lets make a categorical variable  of HIGH EDUCATION Vs LOW EDUCATION LEVELS.
+```{r}
+insurance.trn = insurance.trn %>% mutate(EDU_BACH_MAST_PHD=as.numeric(EDUCATION %in% c("PhD", "Masters", "Bachelors")))  %>% select(-EDUCATION)
+```
+
+*JOB CATEGORY - In theory, white collar jobs tend to be safer* 
+
+Lets check the *JOB* categorical variable:
+```{r}
+round(prop.table(table(insurance.trn$JOB,insurance.trn$TARGET_FLAG),1),2)
+```
+
+Lets make a categorical variable  of WHITE-COLLAR Vs Non-WHITE-COLLAR.
+```{r}
+insurance.trn = insurance.trn %>% mutate(JOB_WHITECOLLAR=as.numeric(JOB %in% c("Manager", "Lawyer", "Doctor", "Professional"))) %>% select(-JOB)
+```
+
+*KIDSDRIV - When teenagers drive your car, you are more likely to get into crashes*
+```{r}
+#KIDSDRIV is "number of driving children""
+round(prop.table(table(insurance.trn$KIDSDRIV,insurance.trn$TARGET_FLAG),1),2)
+```
+
+So,lets split the one or 2 teenagers Vs 3 or 4 teenagers, that drive the car.
+```{r}
+insurance.trn = insurance.trn %>% mutate(KIDSDRIV_2=as.numeric(KIDSDRIV %in% c(1,2)),
+                                         KIDSDRIV_4=as.numeric(KIDSDRIV %in% c(2,4))) %>% 
+                                  select(-KIDSDRIV)
+```
+
+*MSTATUS - In theory, married people drive more safely*
+
+```{r}
+round(prop.table(table(insurance.trn$MSTATUS,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(MARRIED=as.numeric(MSTATUS  == "Yes")) %>% 
+                                  select(-MSTATUS)
+```
+
+*RED_CAR - Urban legend says that red cars (especially red sports cars) are more risky. Is that true?*
+
+```{r}
+round(prop.table(table(insurance.trn$RED_CAR,insurance.trn$TARGET_FLAG),1),2)
 round(prop.table(table(insurance.trn$CAR_TYPE,insurance.trn$TARGET_FLAG),1),2)
 ```
 
+Lets have a category of red sports car to verify the above Urban legend statement.
+
+```{r}
+insurance.trn = insurance.trn %>% mutate(RED_SPORTS_CAR=as.numeric(RED_CAR  == "yes" & CAR_TYPE == 'Sports Car')) %>% 
+                                  select(-RED_CAR)
+
+round(prop.table(table(insurance.trn$RED_SPORTS_CAR,insurance.trn$TARGET_FLAG),1),2)
+```
 
 
+*REVOKED - If your license was revoked in the past 7 years, you probably are a more risky driver.*
 
+```{r}
+round(prop.table(table(insurance.trn$REVOKED,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(REVOKED=as.numeric(REVOKED  == "Yes" )) 
+
+```
+
+*SEX - Urban legend says that women have less crashes then men. Is that true?*
+
+```{r}
+round(prop.table(table(insurance.trn$SEX,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(MALE=as.numeric(SEX  == "M" ))  %>% select(-SEX)
+```
+
+*The other variables - BLUEBOOK,CAR_AGE,CAR_TYPE , has UNKNOWN effect, per data_desc*
+
+
+After adding the dummy variables, here's a glimpse of our final dataset after dummy variables.
+
+```{r}
+glimpse(insurance.trn)
+```
 
 
 
