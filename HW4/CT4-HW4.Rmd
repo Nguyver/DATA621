@@ -1,5 +1,5 @@
 ---
-title: "Critical Thinking Group 4 - HW4- Auto Insurance"
+title: "Critical Thinking Group 4 - HW4 - Auto Insurance"
 author: "Sreejaya, Suman, Vuthy"
 date: "November 7, 2016"
 output: pdf_document
@@ -55,17 +55,48 @@ The dataset contains roughly 8000 observations and 26 variables. Each record has
 - TARGET_FLAG
 - TARGET_AMT 
 
-Running the glimpse() function on the dataset reveals that a few variables are of the wrong data type. 
-Below is a glimpse of the data. A quick look indicates that chas and target might be classification variables.
+Running the glimpse() function on the dataset reveals a few issues with the data.  
 
-```{r}
+Some data points have to be cleaned up
+
+- INCOME
+- HOME_VAL
+- MSTATUS
+- SEX
+- EDUCATION
+- JOB
+- BLUEBOOK
+- CAR_TYPE
+- OLDCLAIM
+
+A few variables need to be converted to factors
+
+- TARGET_FLAG
+- PARENT1
+- MSTATUS
+- SEX
+- EDUCATION
+- JOB
+- CAR_USE
+- CAR_TYPE
+- RED_CAR
+- REVOKED
+- URBANICITY
+
+A few variables need to be converted to integers
+
+- INCOME
+- HOME_VAL
+- BLUEBOOK
+- OLDCLAIM
+
+```{r eval=FALSE}
 glimpse(insurance.trn)
 ```
-
-```{r}
+As with the glimpse() function, the summary() function reveals a few variables need to be coerced as well as a few missing values (NA).  
+```{r eval=FALSE}
 summary(insurance.trn)
 ```
-Taking a closer look at the data with summary statistics, we can see that PARENT1, SEX, MSTATUS, CAR_USE, RED_CAR, REVOKED, URBANICITY should be converted to factors.
 
 ```{r eval=FALSE}
 ### Visually assessing missing values: 
@@ -82,24 +113,52 @@ The following variables have missing values:
 | YOJ           | 454  |
 
 
-### Get rid of unnecessory variables:
-"INDEX" is just a number assigned to each record. It is nothing more than an arbitrary identifier;  so we can remove it:
-```{r}
+## Data Preparation
+
+### Remove unnecessory variables:
+"INDEX" is nothing more than an arbitrary identifier that provides no predictive value. It will be removed from the data set.  
+```{r echo=TRUE}
 insurance.trn$INDEX <- NULL
 ```
 
+### Clean up data
+Dollar signs and commas need to be removed from **INCOME, HOME_VAL, BLUEBOOK, OLDCLAIM**
 
-## Data Preparation
+```{r echo=TRUE}
+pattern1 <- '\\$*|,'
+replacement <- ''
+
+insurance.trn$INCOME <- as.integer(gsub(pattern1,replacement, x=insurance.trn$INCOME))
+insurance.trn$HOME_VAL <- as.integer(gsub(pattern1,replacement, x=insurance.trn$HOME_VAL))
+insurance.trn$BLUEBOOK <- as.integer(gsub(pattern1,replacement, x=insurance.trn$BLUEBOOK))
+insurance.trn$OLDCLAIM <- as.integer(gsub(pattern1,replacement, x=insurance.trn$OLDCLAIM))
+```
+'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
+
+```{r echo=TRUE}
+pattern1 <- 'z_'
+replacement <- ''
+
+insurance.trn$MSTATUS <- gsub(pattern1,replacement, x=insurance.trn$MSTATUS)
+insurance.trn$SEX <- gsub(pattern1,replacement, x=insurance.trn$SEX)
+insurance.trn$EDUCATION <- gsub(pattern1,replacement, x=insurance.trn$EDUCATION)
+insurance.trn$JOB <- gsub(pattern1,replacement, x=insurance.trn$JOB)
+insurance.trn$CAR_TYPE <- gsub(pattern1,replacement, x=insurance.trn$CAR_TYPE)
+```
 
 ### Factorize Variables:
 
-Convert the ** PARENT1, SEX, MSTATUS, CAR_USE, RED_CAR, REVOKED, URBANICITY ** variables into factors:
+Convert the **TARGET_FLAG, PARENT1, SEX, MSTATUS, EDUCATION, JOB, CAR_USE, CAR_TYPE, RED_CAR, REVOKED, URBANICITY** variables into factors:
 
 ```{r echo=TRUE}
+insurance.trn$TARGET_FLAG <- as.factor(insurance.trn$TARGET_FLAG)
 insurance.trn$PARENT1 <- as.factor(insurance.trn$PARENT1)
 insurance.trn$SEX <- as.factor(insurance.trn$SEX)
 insurance.trn$MSTATUS <- as.factor(insurance.trn$MSTATUS)
+insurance.trn$EDUCATION <- as.factor(insurance.trn$EDUCATION)
+insurance.trn$JOB <- as.factor(insurance.trn$JOB)
 insurance.trn$CAR_USE <- as.factor(insurance.trn$CAR_USE)
+insurance.trn$CAR_TYPE <- as.factor(insurance.trn$CAR_TYPE)
 insurance.trn$RED_CAR <- as.factor(insurance.trn$RED_CAR)
 insurance.trn$REVOKED <- as.factor(insurance.trn$REVOKED)
 insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
