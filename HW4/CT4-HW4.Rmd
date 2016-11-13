@@ -502,71 +502,62 @@ Number of observations in *test* dataset is `r nrow(insurance.test)`
 
 Build different logistic models to predict the probability of TARGET_FLAG
 
-####Stepwise Logistic Regression:
+####Stepwise Forward Logistic Regression:
 
 ```{r}
 fit.log <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT , family=binomial(), data =insurance.training)
-model.step.log = step(fit.log , trace = FALSE) 
+model.backward.step.log = step(fit.log , trace = FALSE) 
 
-summary(model.step.log) 
-formula(model.step.log)
+summary(model.backward.step.log) 
+formula(model.backward.step.log)
 
 par(mfrow=c(2, 2))
-graphics::plot(model.step.log, main="Stepwise Regression")
+graphics::plot(model.backward.step.log, main="Stepwise Backward Regression")
 ```
 
+####Stepwise Forward Logistic Regression:
+
 ```{r}
-
-fullmod.lgr <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT, family=binomial(), data=insurance.training)
-insurance.trn.backmod.lgr <- step(fullmod.lgr, trace=0)
-formula(insurance.trn.backmod.lgr)
-par(mfrow=c(2, 2))
-graphics::plot(insurance.trn.backmod.lgr)
-
-# 2.
 nothing.mod.lgr <- glm(TARGET_FLAG ~ 1,family=binomial, data=na.omit(insurance.training))
-insurance.trn.forwardmod.lgr = step(nothing.mod.lgr,
-    scope=list(lower=formula(nothing.mod.lgr),upper=formula(fullmod.lgr)), direction="forward", trace = FALSE)
-formula(insurance.trn.forwardmod.lgr)
+model.forward.step.log  = step(nothing.mod.lgr,
+    scope=list(lower=formula(nothing.mod.lgr),upper=formula(fit.log)), direction="forward", trace = FALSE)
+
+summary(model.forward.step.log) 
+formula(model.forward.step.log)
 
 par(mfrow=c(2, 2))
-graphics::plot(insurance.trn.backmod.lgr)
+graphics::plot(model.forward.step.log, main="Stepwise Forward Regression")
 ```
 
  
 ###MULTIPLE LINEAR REGRESSION MODELS
 Build different linear models to predict the amount for TARGET_AMT
 
-####Stepwise Linear Regression:
+####Stepwise Backward Linear Regression:
 
 ```{r, message=FALSE, warning=FALSE}
-fit.mlr <-  stats::lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
-model.step.mlr <- step(fit.mlr, trace=FALSE)
-summary(model.step.mlr)
+fit.mlr <- lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
+model.backward.step.mlr <- step(fit.mlr, trace=FALSE)
+
+summary(model.backward.step.mlr) 
+formula(model.backward.step.mlr)
+
 
 par(mfrow=c(2, 2))
-graphics::plot(model.step.mlr, main="Stepwise Regression")
-```
-
-```{r}
-insurance.training$INDEX <- NULL
+graphics::plot(model.backward.step.mlr, main="Stepwise Backward Regression")
 ```
 
 
+####Stepwise Forward Linear Regression:
 ```{r}
-fullmod.lnr <-  stats::lm(TARGET_AMT ~ . -TARGET_FLAG, data=insurance.training)
-insurance.trn.backmod.lnr <- step(fullmod.lnr, trace=0)
-
-par(mfrow=c(2, 2))
-graphics::plot(insurance.trn.backmod.lnr)
-
-
 nothing.mod.lnr <- lm(TARGET_AMT ~ 1, data=insurance.training)
-insurance.trn.forwardmod.lnr <- step(nothing.mod.lnr,
-                      direction = 'forward', trace=0)
+model.forward.step.mlr <- step(nothing.mod.lnr,direction = 'forward', trace=1)
+
+summary(model.forward.step.mlr)
+formula(model.forward.step.mlr)
 
 par(mfrow=c(2, 2))
-graphics::plot(insurance.trn.backmod.lnr)
+graphics::plot(model.forward.step.mlr, main="Stepwise Forward Regression")
 ```
 
 
@@ -574,15 +565,21 @@ graphics::plot(insurance.trn.backmod.lnr)
 
 ### Logistic Regression:
 
-Measure performance among different models and select one
+Measure performance among different models and select one:
 
-#### Stepwise Regression Performance:
-
-Finding Score  & performance based on test data:
+Finding Score & performance based on test data:
 
 ```{r}
-insurance.test$score=predict(model.step.log,insurance.test,type="response")
-ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG)))+geom_point()+geom_jitter()
+#Storage to keep performance measures that would aid us in selecting the best model:
+#performance.results <- c( model = character(),  Sn = numeric(), Sp = numeric, Accuracy = numeric())
+performance.results1 <- vector()
+```
+
+#### Stepwise Backward:
+
+```{r}
+insurance.test$score=predict(model.backward.step.log,insurance.test,type="response")
+ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG))) + geom_point() + geom_jitter()
 ```
 
 Based on our visualization, it appears like 0.30 could be a better cutoff (?).
@@ -620,31 +617,89 @@ confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_F
 (roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE))
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
 (auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4))
-performance.results <- vector()
-performance.results <- rbind(performance.results, c("Step wise",sensitivity, specificity,  accuracy, auc))
+performance.results1 <- rbind(performance.results1, c("Step wise Backward",sensitivity, specificity,  accuracy, auc))
 ```
 
+
+#### Stepwise Forward:
+
+```{r}
+insurance.test$score=predict(model.forward.step.log,insurance.test,type="response")
+ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG))) + geom_point() + geom_jitter()
+```
+
+Based on our visualization, it appears like 0.30 could be a better cutoff (?).
+```{r}
+cutoff=0.3
+insurance.test$predicted=as.numeric(insurance.test$score>cutoff) 
+TP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==1) 
+FP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==0) 
+FN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==1) 
+TN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==0)
+
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+```
+
+```{r}
+confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_FLAG), positive = "1")
+
+(sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4))
+
+(specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4))
+
+#accuracy = (TP+TN)/(P+N)
+(accuracy <- round( ( (TP + TN) / (P + N) ) , 4))
+
+(cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1"))
+```
+
+
+### AUC
+
+```{r}
+(roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE))
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+(auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4))
+performance.results1 <- rbind(performance.results1, c("Step wise Forward",sensitivity, specificity,  accuracy, auc))
+```
+
+
+###Compare Results:
+
+```{r}
+results <- as.data.frame(performance.results1);
+colnames(results) <- c("Method", "Sn", "Sp", "Accuracy", "AUC")
+kable(results)
+```
+
+From the above, both the models result the same in predicting the target variable of the given dataset.
 
 ### Mulitple Linear Regression:
 
 Measure performance among Mulitple Linear Regression models and select one
 
 
-#### Stepwise Regression Performance:
+#### Stepwise Backward Regression Performance:
 
 Performance on the test data:
 
 ```{r}
 
-#Adjusted R squared
-(ar2 <-  summary(model.step.mlr)$adj.r.squared)
+performance.results2 <- c()
 
+#Adjusted R squared
+(ar2 <-  summary(model.backward.step.mlr)$adj.r.squared)
 
 #Root mean sqaure error:
-(rmse=sqrt(mean((predict(model.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)))
+(rmse=sqrt(mean((predict(model.backward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)))
 
-plot(insurance.test$TARGET_AMT,predict(model.step.mlr,insurance.test))
+plot(insurance.test$TARGET_AMT,predict(model.backward.step.mlr,insurance.test))
 #hist(model.step.mlr$residuals,breaks = 20)
+
+performance.results2 <- rbind(performance.results2, c("Step wise Backward",ar2, rmse))
 
 ```
 R squared -proportion of variation in the dependent (response) variable
@@ -652,6 +707,35 @@ R-Squared	Higher the better (> 0.70)
 Adj R-Squared	Higher the better
 MSE (Mean squared error)	Lower the better
 
+
+```{r}
+
+#Adjusted R squared
+(ar2 <-  summary(model.forward.step.mlr)$adj.r.squared)
+
+#Root mean sqaure error:
+(rmse=sqrt(mean((predict(model.forward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)))
+
+plot(insurance.test$TARGET_AMT,predict(model.forward.step.mlr,insurance.test))
+#hist(model.step.mlr$residuals,breaks = 20)
+
+performance.results2 <- rbind(performance.results2, c("Step wise Forward",ar2, rmse))
+
+```
+
+###Compare Results:
+
+```{r}
+results <- as.data.frame(performance.results2);
+colnames(results) <- c("Method", "Adj R Squared", "RMSE")
+kable(results)
+```
+
+From the above, both the models result in poor performance in predicting the target variable of amount from the given dataset. So, predicting the target crash amount would be difficult with our above assumptions. However, for our evaluation lets consider the Step wise Backward regression method.
+
+
+
+#Evaluation:
 
 ```{r}
 
@@ -663,17 +747,14 @@ insurance.evl$OLDCLAIM <- sapply(insurance.evl$OLDCLAIM, cleanUpAmounts)
 'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
 
 ```{r echo=TRUE}
-
-
 insurance.evl$MSTATUS <- sapply(insurance.evl$MSTATUS, cleanUpPrefix)
 insurance.evl$SEX <- sapply(insurance.evl$SEX, cleanUpPrefix)
-#insurance.evl$EDUCATION <- sapply(insurance.trn$EDUCATION, cleanUpPrefix)
+insurance.evl$EDUCATION <- sapply(insurance.evl$EDUCATION, cleanUpPrefix)
 insurance.evl$JOB <- sapply(insurance.evl$JOB, cleanUpPrefix)
 insurance.evl$CAR_TYPE <- sapply(insurance.evl$CAR_TYPE, cleanUpPrefix)
-
 ```
 
-### Factorize Variables:
+### Factorize the variables from the evaluation data set:
 
 ```{r echo=TRUE}
 insurance.evl$TARGET_FLAG <- as.factor(insurance.evl$TARGET_FLAG)
@@ -689,10 +770,89 @@ insurance.evl$REVOKED <- as.factor(insurance.evl$REVOKED)
 insurance.evl$URBANICITY <- as.factor(insurance.evl$URBANICITY)
 ```
 
+### Data imputing for evaluation data set:
 ```{r}
+meanVal <- mean(insurance.evl$CAR_AGE, na.rm=TRUE)
+medianVal <- median(insurance.evl$CAR_AGE, na.rm=TRUE)
 
-#insurance.prd <- predict(model.step.log,newdata=subset(insurance.evl,select=c(2,4,6,8,9,10,11,13,14,15,16,17,18,19,21,22,23,24,26)),type='response')
+insurance.evl$CAR_AGE<- ifelse( insurance.evl$CAR_AGE <=0 , medianVal, insurance.evl$CAR_AGE)
+insurance.evl$CAR_AGE<- ifelse(is.na( insurance.evl$CAR_AGE )==TRUE, medianVal, insurance.evl$CAR_AGE)
 
+medianVal <- median(insurance.evl$YOJ, na.rm=TRUE)
+insurance.evl$YOJ<- ifelse(is.na( insurance.evl$YOJ )==TRUE, medianVal, insurance.evl$YOJ)
+
+medianVal <- median(insurance.evl$AGE, na.rm=TRUE)
+insurance.evl$AGE<- ifelse(is.na( insurance.evl$AGE )==TRUE, medianVal, insurance.evl$AGE)
+
+insurance.evl$INCOME <- ifelse(is.na( insurance.evl$INCOME)==TRUE, 0, insurance.evl$INCOME)
+insurance.evl$INCOME_LOG <- sapply(insurance.evl$INCOME, Xfrmlog10)
+insurance.evl$INCOME_LOG<- ifelse(insurance.evl$INCOME_LOG ==0, median(insurance.evl$INCOME_LOG), insurance.evl$INCOME_LOG)
+
+insurance.evl$HOME_VAL <- ifelse(is.na( insurance.evl$HOME_VAL)==TRUE, 0, insurance.evl$INCOME)
+insurance.evl$HOME_VAL_LOG <- sapply(insurance.evl$HOME_VAL, Xfrmlog10)
+insurance.evl$HOME_VAL_LOG<- ifelse(insurance.evl$HOME_VAL_LOG ==0, median(insurance.evl$HOME_VAL_LOG), insurance.evl$HOME_VAL_LOG)
+
+insurance.evl = insurance.evl %>% mutate(CARUSE_COMMERCIAL=as.numeric(CAR_USE=="Commercial"))  %>% select(-CAR_USE)
+
+insurance.evl = insurance.evl %>% mutate(EDU_BACH_MAST_PHD=as.numeric(EDUCATION %in% c("PhD", "Masters", "Bachelors")))  %>% select(-EDUCATION)
+
+insurance.evl = insurance.evl %>% mutate(JOB_WHITECOLLAR=as.numeric(JOB %in% c("Manager", "Lawyer", "Doctor", "Professional"))) %>% select(-JOB)
+
+
+insurance.evl = insurance.evl %>% mutate(KIDSDRIV_2=as.numeric(KIDSDRIV %in% c(1,2)),
+                                         KIDSDRIV_4=as.numeric(KIDSDRIV %in% c(2,4))) %>% 
+                                  select(-KIDSDRIV)
+
+insurance.evl = insurance.evl %>% mutate(MARRIED=as.numeric(MSTATUS  == "Yes")) %>% 
+                                  select(-MSTATUS)
+
+insurance.evl = insurance.evl %>% mutate(RED_SPORTS_CAR=as.numeric(RED_CAR  == "yes" & CAR_TYPE == 'Sports Car')) %>% 
+                                  select(-RED_CAR)
+
+insurance.evl = insurance.evl %>% mutate(REVOKED=as.numeric(REVOKED  == "Yes" )) 
+
+insurance.evl = insurance.evl %>% mutate(MALE=as.numeric(SEX  == "M" ))  %>% select(-SEX)
+
+insurance.evl = insurance.evl %>% mutate(CAR_TYPE_vAN=as.numeric(CAR_TYPE == "Van"),
+                                         CAR_TYPE_SUV=as.numeric(CAR_TYPE == "SUV"),
+                                         CAR_TYPE_SPORTS=as.numeric(CAR_TYPE == "Sports Car"),
+                                         CAR_TYPE_PICKUP=as.numeric(CAR_TYPE == "Pickup"),
+                                         CAR_TYPE_PANTRUCK=as.numeric(CAR_TYPE == "Panel Truck")) %>% 
+                                  select(-CAR_TYPE)
+
+insurance.evl = insurance.evl %>% mutate(PARENT1=as.numeric(PARENT1  == "Yes" ))
+
+
+insurance.evl = insurance.evl %>% mutate(URBAN=as.numeric(URBANICITY  == "Highly Urban/ Urban")) %>% 
+                                  select(-URBANICITY)
+
+```
+
+
+###Final Results:
+
+Here's our final results from the above models:
+
+```{r}
+#Predict Target Flag using Logistic Regression
+insurance.target.flag.prd <- predict(model.backward.step.log,newdata=subset(insurance.evl,select=c(HOMEKIDS , PARENT1 , HOME_VAL , TRAVTIME , BLUEBOOK , 
+    TIF , OLDCLAIM , CLM_FREQ , REVOKED , MVR_PTS , CARUSE_COMMERCIAL , 
+    EDU_BACH_MAST_PHD , JOB_WHITECOLLAR , KIDSDRIV_2 , MARRIED , 
+    CAR_TYPE_vAN , CAR_TYPE_SUV , CAR_TYPE_SPORTS , CAR_TYPE_PICKUP , 
+    CAR_TYPE_PANTRUCK , URBAN)),type='response')
+
+insurance.target.flag.prd <- ifelse(insurance.target.flag.prd > 0.3, 1, 0)
+
+insurance.evl$predicted <- insurance.target.flag.prd
+insurance.evl$TARGET_FLAG <- factor(insurance.evl$predicted)
+
+
+#Predict Amount using Multiple Linear Regression
+insurance.evl$TARGET_AMT<- round(predict(model.backward.step.mlr, newdata = insurance.evl))
+
+#Final Results.
+kable(subset(insurance.evl, select=c(INDEX, TARGET_FLAG,TARGET_AMT, MALE, MARRIED, EDU_BACH_MAST_PHD))) 
+#, JOB_WHITECOLLAR, KIDSDRIV_2, URBAN, RED_SPORTS_CAR
 ```
 
 
