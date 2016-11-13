@@ -828,6 +828,9 @@ insurance.evl = insurance.evl %>% mutate(URBAN=as.numeric(URBANICITY  == "Highly
 
 Here's our final results from the above models:
 
+Though it was easier to predict the *target flag* - which indicates if someone gets into a crash or not, it was not easier to predict the *TARGET AMOUNT* which indicates how much amount will be claimed. So, the target claim amount from a crash seemes to be more random.
+
+
 ```{r}
 #Predict Target Flag using Logistic Regression
 insurance.target.flag.prd <- predict(model.backward.step.log,newdata=subset(insurance.evl,select=c(HOMEKIDS , PARENT1 , HOME_VAL , TRAVTIME , BLUEBOOK , 
@@ -848,6 +851,8 @@ insurance.evl$TARGET_AMT<- round(predict(model.backward.step.mlr, newdata = insu
 #Final Results.
 kable(subset(insurance.evl, select=c(INDEX, TARGET_FLAG,TARGET_AMT, MALE, MARRIED, EDU_BACH_MAST_PHD))) 
 #, JOB_WHITECOLLAR, KIDSDRIV_2, URBAN, RED_SPORTS_CAR
+
+
 ```
 
 
