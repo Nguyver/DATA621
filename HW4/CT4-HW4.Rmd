@@ -507,6 +507,7 @@ Build different logistic models to predict the probability of TARGET_FLAG
 ```{r}
 fit.log <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT , family=binomial(), data =insurance.training)
 model.step.log = step(fit.log , trace = FALSE) 
+
 summary(model.step.log) 
 formula(model.step.log)
 
@@ -514,9 +515,26 @@ par(mfrow=c(2, 2))
 graphics::plot(model.step.log, main="Stepwise Regression")
 ```
 
+```{r}
 
+fullmod.lgr <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT, family=binomial(), data=insurance.training)
+insurance.trn.backmod.lgr <- step(fullmod.lgr, trace=0)
+formula(insurance.trn.backmod.lgr)
+par(mfrow=c(2, 2))
+graphics::plot(insurance.trn.backmod.lgr)
+
+# 2.
+nothing.mod.lgr <- glm(TARGET_FLAG ~ 1,family=binomial, data=na.omit(insurance.training))
+insurance.trn.forwardmod.lgr = step(nothing.mod.lgr,
+    scope=list(lower=formula(nothing.mod.lgr),upper=formula(fullmod.lgr)), direction="forward", trace = FALSE)
+formula(insurance.trn.forwardmod.lgr)
+
+par(mfrow=c(2, 2))
+graphics::plot(insurance.trn.backmod.lgr)
+```
+
+ 
 ###MULTIPLE LINEAR REGRESSION MODELS
-
 Build different linear models to predict the amount for TARGET_AMT
 
 ####Stepwise Linear Regression:
@@ -530,7 +548,28 @@ par(mfrow=c(2, 2))
 graphics::plot(model.step.mlr, main="Stepwise Regression")
 ```
 
+```{r}
+insurance.training$INDEX <- NULL
+```
 
+
+```{r}
+# 1.
+
+fullmod.lnr <- lm(TARGET_AMT ~ , data=insurance.training)
+insurance.trn.backmod.lnr <- step(fullmod.lnr, trace=0)
+
+par(mfrow=c(2, 2))
+graphics::plot(insurance.trn.backmod.lnr)
+
+# 2.
+nothing.mod.lnr <- lm(TARGET_AMT ~ 1, data=insurance.training)
+insurance.trn.forwardmod.lnr <- step(nothing.mod.lnr,
+                      direction = 'forward', trace=1)
+
+par(mfrow=c(2, 2))
+graphics::plot(insurance.trn.backmod.lnr)
+```
 
 
 #Model Selection
@@ -577,10 +616,21 @@ confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_F
 ```
 
 
+### AUC
+
+```{r}
+(roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE))
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+(auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4))
+performance.results <- vector()
+performance.results <- rbind(performance.results, c("Step wise",sensitivity, specificity,  accuracy, auc))
+```
+
 
 ### Mulitple Linear Regression:
 
 Measure performance among Mulitple Linear Regression models and select one
+
 
 #### Stepwise Regression Performance:
 
@@ -597,6 +647,54 @@ Performance on the test data:
 
 plot(insurance.test$TARGET_AMT,predict(model.step.mlr,insurance.test))
 #hist(model.step.mlr$residuals,breaks = 20)
+
+```
+R squared -proportion of variation in the dependent (response) variable
+R-Squared	Higher the better (> 0.70)
+Adj R-Squared	Higher the better
+MSE (Mean squared error)	Lower the better
+
+
+```{r}
+
+insurance.evl$INCOME <- sapply(insurance.evl$INCOME, cleanUpAmounts)
+insurance.evl$HOME_VAL <- sapply(insurance.evl$HOME_VAL, cleanUpAmounts)
+insurance.evl$BLUEBOOK <- sapply(insurance.evl$BLUEBOOK, cleanUpAmounts)
+insurance.evl$OLDCLAIM <- sapply(insurance.evl$OLDCLAIM, cleanUpAmounts)
+```
+'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
+
+```{r echo=TRUE}
+
+
+insurance.evl$MSTATUS <- sapply(insurance.evl$MSTATUS, cleanUpPrefix)
+insurance.evl$SEX <- sapply(insurance.evl$SEX, cleanUpPrefix)
+insurance.evl$EDUCATION <- sapply(insurance.trn$EDUCATION, cleanUpPrefix)
+insurance.evl$JOB <- sapply(insurance.evl$JOB, cleanUpPrefix)
+insurance.evl$CAR_TYPE <- sapply(insurance.evl$CAR_TYPE, cleanUpPrefix)
+
+```
+
+### Factorize Variables:
+
+```{r echo=TRUE}
+insurance.evl$TARGET_FLAG <- as.factor(insurance.evl$TARGET_FLAG)
+insurance.evl$PARENT1 <- as.factor(insurance.evl$PARENT1)
+insurance.evl$SEX <- as.factor(insurance.evl$SEX)
+insurance.evl$MSTATUS <- as.factor(insurance.evl$MSTATUS)
+insurance.evl$EDUCATION <- as.factor(insurance.evl$EDUCATION)
+insurance.evl$JOB <- as.factor(insurance.evl$JOB)
+insurance.evl$CAR_USE <- as.factor(insurance.evl$CAR_USE)
+insurance.evl$CAR_TYPE <- as.factor(insurance.evl$CAR_TYPE)
+insurance.evl$RED_CAR <- as.factor(insurance.evl$RED_CAR)
+insurance.evl$REVOKED <- as.factor(insurance.evl$REVOKED)
+insurance.evl$URBANICITY <- as.factor(insurance.evl$URBANICITY)
+```
+
+```{r}
+predict(modelta3, type = "coefficients", s = bestlam)
+insurance.prd <- predict(model.step.log,newdata=subset(insurance.evl,select=c(2,4,6,8,9,11,13,14,15,16,17,18,19,21,22,23,24,26)),type='response')
+
 ```
 
 
