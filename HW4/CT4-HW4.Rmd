@@ -540,7 +540,7 @@ Build different linear models to predict the amount for TARGET_AMT
 ####Stepwise Linear Regression:
 
 ```{r, message=FALSE, warning=FALSE}
-fit.mlr <- lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
+fit.mlr <-  stats::lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
 model.step.mlr <- step(fit.mlr, trace=FALSE)
 summary(model.step.mlr)
 
@@ -554,18 +554,16 @@ insurance.training$INDEX <- NULL
 
 
 ```{r}
-# 1.
-
-fullmod.lnr <- lm(TARGET_AMT ~ , data=insurance.training)
+fullmod.lnr <-  stats::lm(TARGET_AMT ~ . -TARGET_FLAG, data=insurance.training)
 insurance.trn.backmod.lnr <- step(fullmod.lnr, trace=0)
 
 par(mfrow=c(2, 2))
 graphics::plot(insurance.trn.backmod.lnr)
 
-# 2.
+
 nothing.mod.lnr <- lm(TARGET_AMT ~ 1, data=insurance.training)
 insurance.trn.forwardmod.lnr <- step(nothing.mod.lnr,
-                      direction = 'forward', trace=1)
+                      direction = 'forward', trace=0)
 
 par(mfrow=c(2, 2))
 graphics::plot(insurance.trn.backmod.lnr)
@@ -669,7 +667,7 @@ insurance.evl$OLDCLAIM <- sapply(insurance.evl$OLDCLAIM, cleanUpAmounts)
 
 insurance.evl$MSTATUS <- sapply(insurance.evl$MSTATUS, cleanUpPrefix)
 insurance.evl$SEX <- sapply(insurance.evl$SEX, cleanUpPrefix)
-insurance.evl$EDUCATION <- sapply(insurance.trn$EDUCATION, cleanUpPrefix)
+#insurance.evl$EDUCATION <- sapply(insurance.trn$EDUCATION, cleanUpPrefix)
 insurance.evl$JOB <- sapply(insurance.evl$JOB, cleanUpPrefix)
 insurance.evl$CAR_TYPE <- sapply(insurance.evl$CAR_TYPE, cleanUpPrefix)
 
@@ -692,8 +690,8 @@ insurance.evl$URBANICITY <- as.factor(insurance.evl$URBANICITY)
 ```
 
 ```{r}
-predict(modelta3, type = "coefficients", s = bestlam)
-insurance.prd <- predict(model.step.log,newdata=subset(insurance.evl,select=c(2,4,6,8,9,11,13,14,15,16,17,18,19,21,22,23,24,26)),type='response')
+
+#insurance.prd <- predict(model.step.log,newdata=subset(insurance.evl,select=c(2,4,6,8,9,10,11,13,14,15,16,17,18,19,21,22,23,24,26)),type='response')
 
 ```
 
