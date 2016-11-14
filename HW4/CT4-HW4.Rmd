@@ -9,7 +9,6 @@ output: pdf_document
 knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
 knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 options(scipen=999)
-options(expressions = 500000)
 ```
 
 
@@ -40,7 +39,7 @@ data_desc <- read.csv(desc)
 kable(data_desc[,1:2])
 ```
 
-# Data Exploration
+## Data Exploration
 
 ```{r read data}
 insurance.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
@@ -49,24 +48,32 @@ insurance.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW
 ```
 The dataset contains roughly 8000 observations and 26 variables. Each record has two response variables. 
 
-- TARGET_FLAG
-- TARGET_AMT 
+- TARGET_FLAG: Was Car in a crash? 1=YES 0=NO
+- TARGET_AMT: If car was in a crash, what was the cost
 
 Running the glimpse() function on the dataset reveals a few issues with the data.  
 
-Some data points have to be cleaned up
+```{r}
+glimpse(insurance.trn)
+```
 
-- INCOME
-- HOME_VAL
-- MSTATUS
-- SEX
-- EDUCATION
-- JOB
-- BLUEBOOK
-- CAR_TYPE
-- OLDCLAIM
+### Data Clean Up
 
-A few variables need to be converted to factors
+ Identify Data Elements For Clean up
+
+- INCOME:     Need to remove characters like '$', ',' 
+- HOME_VAL:   Need to remove characters like '$', ',' 
+- MSTATUS:    Remove prefix 'z_'
+- SEX:        Remove prefix 'z_'
+- EDUCATION:  Remove prefix 'z_'
+- JOB:        Remove prefix 'z_'
+- BLUEBOOK:   Need to remove characters like '$', ','
+- CAR_TYPE:   Remove prefix 'z_'
+- OLDCLAIM:   Need to remove characters like '$', ',' 
+
+### Factorization
+
+  A few variables need to be converted to factors
 
 - TARGET_FLAG
 - PARENT1
@@ -80,18 +87,18 @@ A few variables need to be converted to factors
 - REVOKED
 - URBANICITY
 
-A few variables need to be converted to integers
+### Transformations
+
+ Identify variables need to be converted to numeric type & need transformations
 
 - INCOME
 - HOME_VAL
 - BLUEBOOK
-- OLDCLAIM
+- OLDCLAIM - This is for 5 years, we would need to mutate the dataset to have an average per year.
 
-```{r}
-glimpse(insurance.trn)
-```
+
 As with the glimpse() function, the summary() function reveals a few variables need to be coerced as well as a few missing values (NA).  
-```{r eval=FALSE}
+```{r}
 summary(insurance.trn)
 ```
 
@@ -101,7 +108,10 @@ The Amelia package has a plotting function missmap() that will plot the dataset 
 
 missmap(insurance.trn, main = "Missing values vs observed")
 ```
-The following variables have missing values:  
+
+### MISSING VALUES
+
+ The following variables have missing values
 
 | Variable Name | # NA |
 |---------------|------|
@@ -110,18 +120,29 @@ The following variables have missing values:
 | YOJ           | 454  |
 
 
-# Data Preparation
 
-### Remove unnecessory variables 
+### Dummy Variables
 
-"INDEX" is nothing more than an arbitrary identifier that provides no predictive value. It will be removed from the data set.  
-```{r echo=TRUE}
-insurance.trn$INDEX <- NULL
-```
+ These variables are identified as categorical, and would need to be converted into Dummy Variables for Model buidling
 
-### Clean up data 
+- CAR USE: Commercial vehicles are driven more, so might increase probability of collision
+- EDUCATION: In theory more educated people tend to drive more safely
+- JOB CATEGORY: In theory, white collar jobs tend to be safer
+- KIDSDRIV: When teenagers drive your car, you are more likely to get into crashes
+- MSTATUS: In theory, married people drive more safely
+- RED_CAR: Urban legend says that red cars (especially red sports cars) are more risky
+- REVOKED: If your license was revoked in the past 7 years, you probably are a more risky driver
+- SEX: Urban legend says that women have less crashes then men.
+- URBANICITY: Urban Vs Rural
 
-Dollar signs and commas need to be removed from **INCOME, HOME_VAL, BLUEBOOK, OLDCLAIM**
+
+### Normality 
+  
+ Lets check the normality in the given numeric predictors
+
+ Since the amounts got dollar signs and commas, lets perform a quick clean up here, before we start exploring the data: 
+ 
+ Clean up the variables:  **INCOME, HOME_VAL, BLUEBOOK, OLDCLAIM**
 
 ```{r}
 cleanUpAmounts <- function(amount) {
@@ -132,9 +153,72 @@ insurance.trn$HOME_VAL <- sapply(insurance.trn$HOME_VAL, cleanUpAmounts)
 insurance.trn$BLUEBOOK <- sapply(insurance.trn$BLUEBOOK, cleanUpAmounts)
 insurance.trn$OLDCLAIM <- sapply(insurance.trn$OLDCLAIM, cleanUpAmounts)
 ```
+
+*INCOME* :
+
+```{r}
+boxIncome <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+histIncome <- ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+grid.arrange(boxIncome, histIncome, ncol=2,  top = "INCOME: Box Plot & Histogram")
+```
+
+The above box plot and histogram clearly indicates that the INCOME data is positively skewed. We need to address this in *DATA PREPARATION* section.
+
+*HOME_VAL* :
+
+```{r}
+boxHomeVal <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+histHomeVal <- ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+grid.arrange(boxHomeVal, histHomeVal, ncol=2,  top = "HOME_VAL: Box Plot & Histogram")
+```
+
+The above box plot and histogram clearly indicates that the HOME_VAL data is positively skewed. We need to address this in *DATA PREPARATION* section.
+
+```{r}
+gg.age <- ggplot(data = insurance.trn) + geom_histogram(aes(x=AGE)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+gg.bluebook <- ggplot(data = insurance.trn) + geom_histogram(aes(x=BLUEBOOK)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+gg.carage <- ggplot(data = insurance.trn) + geom_histogram(aes(x=CAR_AGE)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+#Total Clamins (Past 5 Years) , Lets take average and draw the histogram.
+insurance.trn$OLDCLAIM.AVG <- insurance.trn$OLDCLAIM/5
+gg.oldclaimavg <- ggplot(data = insurance.trn) + geom_histogram(aes(x=log(OLDCLAIM.AVG)), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+insurance.trn$OLDCLAIM.AVG <- NULL
+#People who have been customers for a long time are usually more safe.
+gg.tif <- ggplot(data = insurance.trn) + geom_histogram(aes(x=TIF)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+#TRAVTIME - Long drives to work usually suggest greater risk
+gg.traveltm <- ggplot(data = insurance.trn) + geom_histogram(aes(x=TRAVTIME)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+#YOJ - People who stay at a job for a long time are usually more safe
+gg.yoj <- ggplot(data = insurance.trn) + geom_histogram(aes(x=YOJ)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+grid.arrange(gg.age, gg.bluebook, gg.carage, gg.oldclaimavg,gg.tif,gg.traveltm,gg.yoj, ncol=2)
+```
+
+From the above histogrames, the 'BLUE BOOK', 'TIF' distributions appears to be positively skewed. We modified the OLDCLAIM variable be the average per year and applied log to make the data distribution nearly normal. We still could see a slight bi-model in it, but we will see how it affect our models.
+
+## Data Preparation
+
+### Remove unnecessory variables 
+
+ "INDEX" is nothing more than an arbitrary identifier that provides no predictive value. It will be removed from the data set.  
+ 
+```{r echo=TRUE}
+insurance.trn$INDEX <- NULL
+```
+
+### Clean up data 
+
+
 'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
 
-```{r echo=TRUE}
+```{r}
 cleanUpPrefix <- function(stringVal) {
   return(gsub('z_', '', stringVal))
 }
@@ -151,7 +235,7 @@ insurance.trn$CAR_TYPE <- sapply(insurance.trn$CAR_TYPE, cleanUpPrefix)
 
 Convert the **TARGET_FLAG, PARENT1, SEX, MSTATUS, EDUCATION, JOB, CAR_USE, CAR_TYPE, RED_CAR, REVOKED, URBANICITY** variables into factors:
 
-```{r echo=TRUE}
+```{r}
 insurance.trn$TARGET_FLAG <- as.factor(insurance.trn$TARGET_FLAG)
 insurance.trn$PARENT1 <- as.factor(insurance.trn$PARENT1)
 insurance.trn$SEX <- as.factor(insurance.trn$SEX)
@@ -166,7 +250,8 @@ insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
 ```
 
 ```{r}
-#insurance.trn$OLDCLAIM_YRLY_AVG <- insurance.trn$OLDCLAIM / 5
+insurance.trn$OLDCLAIM_YRLY_AVG <- insurance.trn$OLDCLAIM / 5
+insurance.trn$OLDCLAIM <- NULL
 ```
 
 ### Handling missing data 
@@ -176,18 +261,21 @@ insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
 ```{r}
 ggplot(data = insurance.trn) + geom_histogram(aes(x=CAR_AGE), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
 ```
+
 From the histogram, we see that CAR_AGE between 5 and 15 are the most common, But there is one record with negative value, which should be replaced. 
+
 so filling in NA's/negative value  with  median(8) or mean(8.33) would be entirely reasonable. Let's fill in the NA's/negative value with the median value of 8: 
 
 ```{r}
-(meanVal <- mean(insurance.trn$CAR_AGE, na.rm=TRUE))
-(medianVal <- median(insurance.trn$CAR_AGE, na.rm=TRUE))
+meanVal <- mean(insurance.trn$CAR_AGE, na.rm=TRUE)
+medianVal <- median(insurance.trn$CAR_AGE, na.rm=TRUE)
 
 insurance.trn$CAR_AGE<- ifelse( insurance.trn$CAR_AGE <=0 , medianVal, insurance.trn$CAR_AGE)
 insurance.trn$CAR_AGE<- ifelse(is.na( insurance.trn$CAR_AGE )==TRUE, medianVal, insurance.trn$CAR_AGE)
 
 summary(insurance.trn$CAR_AGE)
 ```
+
 So, as shown above, after we imputing the CAR_AGE, the mean value is consistent/close to the original mean.
 
 *2. YOJ - There are 454 NA's in YOJ, so it is not a good idea to throw these records away.*  
@@ -195,10 +283,13 @@ So, as shown above, after we imputing the CAR_AGE, the mean value is consistent/
 ```{r}
 ggplot(data = insurance.trn) + geom_histogram(aes(x=YOJ), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
 ```
+
 From the histogram, we see that YOJ between 8 and 12 are the most common, so filling in NA's  with  mean(10.5) or median(11) would be entirely reasonable.
+
 Let's fill in the NA's with the median 11:
+
 ```{r}
-(medianVal <- median(insurance.trn$YOJ, na.rm=TRUE))
+medianVal <- median(insurance.trn$YOJ, na.rm=TRUE)
 
 insurance.trn$YOJ<- ifelse(is.na( insurance.trn$YOJ )==TRUE, medianVal, insurance.trn$YOJ)
 
@@ -214,7 +305,7 @@ grid.arrange(boxAge, histAge, ncol=2,  top = "AGE: Box Plot & Histogram")
 ```
 Since the mean, and median are approximately equal to each other, data is approximately symmetrical and there are no outliars. Mean=44.79 and Median =45. So let's fill in the NA's with the median 45:
 ```{r}
-(medianVal <- median(insurance.trn$AGE, na.rm=TRUE))
+medianVal <- median(insurance.trn$AGE, na.rm=TRUE)
 
 insurance.trn$AGE<- ifelse(is.na( insurance.trn$AGE )==TRUE, medianVal, insurance.trn$AGE)
 
@@ -224,13 +315,8 @@ summary(insurance.trn$AGE)
 
 *4. INCOME - Transformation* 
 
-```{r}
-boxIncome <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
-histIncome <- ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
-grid.arrange(boxIncome, histIncome, ncol=2,  top = "INCOME: Box Plot & Histogram")
-```
+From the DATA EXPLORATION, its clear that the INCOME distribution is positively skewed, So, lets consider transforming it using log base 10.
 
-From the above, its clear that the INCOME distribution is positively skewed, So, lets consider transforming it using log base 10.
 ```{r}
 #reference: https://www.youtube.com/watch?v=_c3dVTRIK9c
 Xfrmlog10 = function(x) {
@@ -256,13 +342,8 @@ Though there is a slight negative skewness, overall this transformation looks be
 
 *5. HOME_VAL - Transformation* 
 
-```{r}
-boxHomeVal <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
-histHomeVal <- ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
-grid.arrange(boxHomeVal, histHomeVal, ncol=2,  top = "HOME_VAL: Box Plot & Histogram")
-```
+From the DATA EXPLORATION, its clear that the HOME_VAL distribution is slightly positively skewed, So, lets consider transforming it using log base 10.
 
-From the above, its clear that the HOME_VAL distribution is slightly positively skewed, So, lets consider transforming it using log base 10.
 ```{r}
 #reference: https://www.youtube.com/watch?v=_c3dVTRIK9c
 
@@ -278,7 +359,7 @@ insurance.trn$HOME_VAL_LOG<- ifelse(insurance.trn$HOME_VAL_LOG ==0, median(insur
 summary(insurance.trn$HOME_VAL_LOG)
 
 ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL_LOG), binwidth =0.1 ) + ggtitle("HOME_VAL_LOG - Hist")+ theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) 
-  
+
 ```
 
 Though there is a slight negative skewness, overall this transformation looks better (nearly normal) than the original distribution.
@@ -418,11 +499,10 @@ After adding the dummy variables, here's a glimpse of our final dataset after du
 
 ```{r}
 glimpse(insurance.trn)
-summary(insurance.trn)
 ```
 
 
-Now , all of our data has got all numeric vas and ready for modelling process.
+Now , all of our data has got all numeric values and the dataset is ready for modelling process.
 
 ### Check for Multicolinearity in the predictors:
 
@@ -442,26 +522,12 @@ names(vif.df) <- c('Multicolinearity score')
 kable(vif.df)
 ```
 
-From the above table, we do see multi-colinearity (with VIF > 10) among the predictors - INCOME and HOME_VAL_LOG, INCOME_LOG variables. 
-Lets eliminate INCOME and see first:
+From the above table, we do see multi-colinearity (with VIF > 10) among the predictors - INCOME_LOG,HOME_VAL_LOG variables. 
+
+Lets eliminate INCOME_LOG and see first:
 
 ```{r}
-insurance.trn$INCOME <- NULL
-fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
-
-#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
-vifFit1 <- vif(fit)
-
-#sort by descending
-vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
-names(vif.df) <- c('Multicolinearity score')
-kable(vif.df)
-```
-
-We still have got high VIF variables - HOME_VAL_LOG and INCOME_LOG. Lets try with HOME_VAL_LOG first.
-
-```{r}
-insurance.trn$HOME_VAL_LOG <- NULL
+insurance.trn$INCOME_LOG <- NULL
 fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
 
 #Lets check for Multi-Collinearity - lets find vif value and drop those that has 
@@ -475,13 +541,13 @@ kable(vif.df)
 
 Perfect, now all the VIF values are below 10, and we are good to proceed.
 
-###Split the dataset into training and test:
+### Split the dataset into training and test:
 
-We will randomly split our dataset into training (80%) and test (20%).
+We will randomly split our dataset into training (75%) and test (25%).
 
 ```{r echo=TRUE}
-set.seed(999) 
-s=sample(1:nrow(insurance.trn),0.80*nrow(insurance.trn)) 
+set.seed(2) 
+s=sample(1:nrow(insurance.trn),0.75*nrow(insurance.trn)) 
 insurance.training=insurance.trn[s,] 
 insurance.test=insurance.trn[-s,]
 ```
@@ -491,13 +557,15 @@ Number of observations in *training* dataset is `r nrow(insurance.training)`
 Number of observations in *test* dataset is `r nrow(insurance.test)`
 
 
-#Build  Models
+## Build  Models
 
-###BINARY LOGISTIC REGRESSION MODELS
+Lets start building models to predict the target variables - *TARGET_FLAG* and *TARGET_AMT* 
+
+### BINARY LOGISTIC REGRESSION MODELS TO PREDICT TARGET_FLAG
 
 Build different logistic models to predict the probability of TARGET_FLAG
 
-####Stepwise Forward Logistic Regression:
+#### Stepwise Backward Logistic Regression:
 
 ```{r}
 fit.log <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT , family=binomial(), data =insurance.training)
@@ -507,10 +575,27 @@ summary(model.backward.step.log)
 formula(model.backward.step.log)
 
 par(mfrow=c(2, 2))
-graphics::plot(model.backward.step.log, main="Stepwise Backward Regression")
+graphics::plot(model.backward.step.log, main="Stepwise Backward Logistic Regression")
 ```
 
-####Stepwise Forward Logistic Regression:
+From the above residual plots, shows that the residuals are not fully linear and the residual variance is not constant. The Normal Q-Q graph indicates that the most of the residuals are on the straight line.However, the Residual Vs Leverage plot has the redline  alligned with gray dotted line, which indicates that the assumption of standardized residuals centered around zero is some what true here.
+
+The significant variables include: 
+
+*INCOME, TRAVTIME, BLUEBOOK, TIF,CLM_FREQ,REVOKED,MVR_PTS,CARUSE_COMMERCIAL* 
+*EDU_BACH_MAST_PHD,JOB_WHITECOLLAR,KIDSDRIV_2 and ,MARRIED,CAR_TYPE,URBAN*
+
+For a unit increase in REVOKED there is a chance of 89% of crash.
+
+And also commercial vehicles tend to be resulting in increased chance of a crash ( approx. 70% per unit increase in commericial car use).
+
+Sports vehicles have 89% chance of crash, and its interested to see that the marital status decreases the probability of the crash by 67%.
+
+Higher education results in 37% decrease in crash. And a white collar job decreases the crash chance by 31%.
+
+Also, the URBAN areas results in increased chance for car crash.
+
+#### Stepwise Forward Logistic Regression:
 
 ```{r}
 nothing.mod.lgr <- glm(TARGET_FLAG ~ 1,family=binomial, data=na.omit(insurance.training))
@@ -521,14 +606,48 @@ summary(model.forward.step.log)
 formula(model.forward.step.log)
 
 par(mfrow=c(2, 2))
-graphics::plot(model.forward.step.log, main="Stepwise Forward Regression")
+graphics::plot(model.forward.step.log, main="Stepwise Forward Logistic Regression")
 ```
 
- 
-###MULTIPLE LINEAR REGRESSION MODELS
+The resuls are pretty much similar to what we have seen in the backward regression above. 
+
+The residual plots, shows that the residuals are not fully linear and the residual variance is not constant. The Normal Q-Q graph indicates that the most of the residuals are on the straight line.However, the Residual Vs Leverage plot has the redline  alligned with gray dotted line, which indicates that the assumption of standardized residuals centered around zero is some what true here.
+
+For a unit increase in REVOKED there is a chance of 89% of crash.
+
+And also commercial vehicles tend to be resulting in incrased chances of a crash ( approx. 70% per unit increase in commericial car use).
+
+Sports vehicles have 89% chance of crash, and its interested to see that the marital status decreases the probability of the crash by 67%.
+
+Higher education results in 37% decrease in crash. And a white collar job decreases the crash chance by 31%.
+
+Also, the URBAN areas results in increased chance for car crash.
+
+#### Manual Logistic Regression:
+
+Based on the data descriptions, and the significant predictors noticed above, lets create a manual logistic model.
+
+```{r}
+model.manual.fit.log <- stats::glm(TARGET_FLAG ~ +AGE +CARUSE_COMMERCIAL +CLM_FREQ +HOME_VAL_LOG +JOB_WHITECOLLAR +KIDSDRIV_2 +KIDSDRIV_4 +MARRIED +MVR_PTS +OLDCLAIM_YRLY_AVG +REVOKED +MALE +TIF +TRAVTIME +YOJ -TARGET_AMT , family=binomial(), data =insurance.training)
+
+summary(model.manual.fit.log) 
+formula(model.manual.fit.log)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.manual.fit.log, main="Manuel Logistic Regression")
+```
+
+The resuls are some what similar to the above 2, however, the normality in residuals is better in stepwise models than our manual model.
+
+In our manual model, we noticed that REVOKED increases the crash chance by almost 100%. And HOME_VAL decreases the decreases the chances of crash significantly. And the families with 1 or 2 teenage kids shows higher chances of crash.
+And the commercial car usage results in 57% crash increase.
+
+
+### MULTIPLE LINEAR REGRESSION MODELS TO PREDICT TARGET_AMT
+
 Build different linear models to predict the amount for TARGET_AMT
 
-####Stepwise Backward Linear Regression:
+#### Stepwise Backward Linear Regression:
 
 ```{r, message=FALSE, warning=FALSE}
 fit.mlr <- lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
@@ -539,24 +658,63 @@ formula(model.backward.step.mlr)
 
 
 par(mfrow=c(2, 2))
-graphics::plot(model.backward.step.mlr, main="Stepwise Backward Regression")
+graphics::plot(model.backward.step.mlr, main="Stepwise Backward Linear Regression")
 ```
 
+In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. However the residual variance is  NOT constant. The Normal Q-Q graph indicates some of the residuals are on the straight line. However, the Residual Vs Leverage plot has the redline slightly alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is true here, though there are few outliers.
 
-####Stepwise Forward Linear Regression:
+The significant predictors in the above are: 
+
+*INCOME,BLUEBOOK,TRAVTIME,TIF,REVOKED,MVR_PTS,CARUSE_COMMERCIAL*
+*KIDSDRIV_2,MARRIED,CAR_TYPE_SUV,CAR_TYPE_SPORTS and URBAN*
+
+Per unit increase in the URBAN , the target amount increases by 1340. And SPORTS CARs causes in increase of 1199 target amount.
+Similary we can see that the *MARRIED, WHITE COLLAR, TIF, HOME_VAL_LOG* are actually causes decrease in the CLAIM AMOUNT.
+
+
+#### Stepwise Forward Linear Regression:
 ```{r}
 nothing.mod.lnr <- lm(TARGET_AMT ~ 1, data=insurance.training)
-model.forward.step.mlr <- step(nothing.mod.lnr,direction = 'forward', trace=1)
+model.forward.step.mlr <- step(nothing.mod.lnr, scope=list(lower=formula(nothing.mod.lnr),upper=formula(fit.mlr)), direction = 'forward', trace=FALSE)
 
 summary(model.forward.step.mlr)
 formula(model.forward.step.mlr)
 
 par(mfrow=c(2, 2))
-graphics::plot(model.forward.step.mlr, main="Stepwise Forward Regression")
+graphics::plot(model.forward.step.mlr, main="Stepwise Forward Linear Regression")
 ```
 
+The resuls are VERY similar to the Stepwise backward linear regression model.
 
-#Model Selection
+In the residuals Vs Fitted graph, the red line is about flat, which indicates the linearity in residuals is good. However the residual variance is  NOT constant. The Normal Q-Q graph indicates some of the residuals are on the straight line. However, the Residual Vs Leverage plot has the redline slightly alligned with gray dotted line, this indicates that the assumption of standardized residuals centered around zero is true here, though there are few outliers.
+
+The significant predictors in the above are: 
+
+*MVR_PTS,PARENT1,TRAVTIME,TIF,REVOKED,MVR_PTS,INCOME,CARUSE_COMMERCIAL* 
+*,MARRIED,CAR_TYPE_SUV,CAR_TYPE_SPORTS,KIDSDRIV_2,TRAVTIME,TIF and URBAN*
+
+Per unit increase in the URBAN , the target amount increases by 1395 And SPORTS CARs causes in increase of 1056 target amount.
+Similary we can see that the *MARRIED, TIF* are actually causes decrease in the CLAIM AMOUNT.
+
+Also, we notice that the MALE gender increases the claim amount by 519.
+
+#### Manual Linear Regression:
+
+Based on the data descriptions, and the significant predictors noticed above, lets create a manual linear model.
+
+```{r}
+model.manual.fit.mlr <- stats::lm(TARGET_AMT ~ +AGE +CARUSE_COMMERCIAL +CLM_FREQ +HOME_VAL_LOG +JOB_WHITECOLLAR +KIDSDRIV_2 +KIDSDRIV_4 +MARRIED +MVR_PTS +OLDCLAIM_YRLY_AVG +REVOKED +MALE +TIF +TRAVTIME +YOJ -TARGET_FLAG , data =insurance.training)
+
+summary(model.manual.fit.mlr) 
+formula(model.manual.fit.mlr)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.manual.fit.mlr, main="Manuel Linear Regression")
+```
+
+The results are similar to the Stepwise linear regression models.
+
+## Model Selection
 
 ### Logistic Regression:
 
@@ -577,7 +735,8 @@ insurance.test$score=predict(model.backward.step.log,insurance.test,type="respon
 ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG))) + geom_point() + geom_jitter()
 ```
 
-Based on our visualization, it appears like 0.30 could be a better cutoff (?).
+Based on our visualization, it appears like 0.30 could be a better cutoff (?). 
+
 ```{r}
 cutoff=0.3
 insurance.test$predicted=as.numeric(insurance.test$score>cutoff) 
@@ -595,23 +754,23 @@ total = P + N
 ```{r}
 confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_FLAG), positive = "1")
 
-(sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4))
+sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4)
 
-(specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4))
+specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4)
 
 #accuracy = (TP+TN)/(P+N)
-(accuracy <- round( ( (TP + TN) / (P + N) ) , 4))
+accuracy <- round( ( (TP + TN) / (P + N) ) , 4)
 
-(cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1"))
+cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1")
 ```
 
 
-### AUC
+### AUC - Backward
 
 ```{r}
-(roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE))
+roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE)
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
-(auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4))
+auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4)
 performance.results1 <- rbind(performance.results1, c("Step wise Backward",sensitivity, specificity,  accuracy, auc))
 ```
 
@@ -641,28 +800,29 @@ total = P + N
 ```{r}
 confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_FLAG), positive = "1")
 
-(sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4))
+sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4)
 
-(specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4))
+specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4)
 
 #accuracy = (TP+TN)/(P+N)
-(accuracy <- round( ( (TP + TN) / (P + N) ) , 4))
+accuracy <- round( ( (TP + TN) / (P + N) ) , 4)
 
-(cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1"))
+cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1")
 ```
 
 
-### AUC
+### AUC - Forward
 
 ```{r}
-(roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE))
+roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE)
 graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
-(auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4))
+auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4)
 performance.results1 <- rbind(performance.results1, c("Step wise Forward",sensitivity, specificity,  accuracy, auc))
 ```
 
+Based on the regression plots and model summary, we are not considering the manual model in our selection process.
 
-###Compare Results:
+### Compare Results:
 
 ```{r}
 results <- as.data.frame(performance.results1);
@@ -676,8 +836,7 @@ From the above, both the models result the same in predicting the target variabl
 
 Measure performance among Mulitple Linear Regression models and select one
 
-
-#### Stepwise Backward Regression Performance:
+#### Stepwise Backward Linear Regression Performance:
 
 Performance on the test data:
 
@@ -686,12 +845,12 @@ Performance on the test data:
 performance.results2 <- c()
 
 #Adjusted R squared
-(ar2 <-  summary(model.backward.step.mlr)$adj.r.squared)
+ar2 <-  round(summary(model.backward.step.mlr)$adj.r.squared , 4)
 
 #Root mean sqaure error:
-(rmse=sqrt(mean((predict(model.backward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)))
+rmse= round(sqrt(mean((predict(model.backward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)),4)
 
-plot(insurance.test$TARGET_AMT,predict(model.backward.step.mlr,insurance.test))
+#plot(insurance.test$TARGET_AMT,predict(model.backward.step.mlr,insurance.test))
 #hist(model.step.mlr$residuals,breaks = 20)
 
 performance.results2 <- rbind(performance.results2, c("Step wise Backward",ar2, rmse))
@@ -702,16 +861,16 @@ R-Squared	Higher the better (> 0.70)
 Adj R-Squared	Higher the better
 MSE (Mean squared error)	Lower the better
 
+We notice that the adjusted R square is 6.3% which is very less. So, this suggests that the model may not be able to predict the target amount unlike the target flag.
 
 ```{r}
-
 #Adjusted R squared
-(ar2 <-  summary(model.forward.step.mlr)$adj.r.squared)
+ar2 <-  round(summary(model.forward.step.mlr)$adj.r.squared,4)
 
 #Root mean sqaure error:
-(rmse=sqrt(mean((predict(model.forward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)))
+rmse= round(sqrt(mean((predict(model.forward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2)),4)
 
-plot(insurance.test$TARGET_AMT,predict(model.forward.step.mlr,insurance.test))
+#plot(insurance.test$TARGET_AMT,predict(model.forward.step.mlr,insurance.test))
 #hist(model.step.mlr$residuals,breaks = 20)
 
 performance.results2 <- rbind(performance.results2, c("Step wise Forward",ar2, rmse))
@@ -726,13 +885,16 @@ colnames(results) <- c("Method", "Adj R Squared", "RMSE")
 kable(results)
 ```
 
-From the above, both the models result in poor performance in predicting the target variable of amount from the given dataset. So, predicting the target crash amount would be difficult with our above assumptions. However, for our evaluation lets consider the Step wise Backward regression method.
+From the above, both the models result in poor performance in predicting the target variable of amount from the given dataset. So, predicting the target crash amount would be difficult with our above assumptions.
+
+However, the *Step wise Backward* method performed better in multiple linear regression case. So, we will finalize backward model for *target amount* prediction.
 
 
+## Evaluation:
 
-#Evaluation:
+ Lets apply the final models on the evaluation dataset. We will first tidy the evaluation dataset and then predit the *TARGET_FLAG* and *TARGET_AMT*
 
-```{r}
+```{r, echo=FALSE}
 
 insurance.evl$INCOME <- sapply(insurance.evl$INCOME, cleanUpAmounts)
 insurance.evl$HOME_VAL <- sapply(insurance.evl$HOME_VAL, cleanUpAmounts)
@@ -741,7 +903,7 @@ insurance.evl$OLDCLAIM <- sapply(insurance.evl$OLDCLAIM, cleanUpAmounts)
 ```
 'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
 
-```{r echo=TRUE}
+```{r echo=FALSE}
 insurance.evl$MSTATUS <- sapply(insurance.evl$MSTATUS, cleanUpPrefix)
 insurance.evl$SEX <- sapply(insurance.evl$SEX, cleanUpPrefix)
 insurance.evl$EDUCATION <- sapply(insurance.evl$EDUCATION, cleanUpPrefix)
@@ -751,7 +913,7 @@ insurance.evl$CAR_TYPE <- sapply(insurance.evl$CAR_TYPE, cleanUpPrefix)
 
 ### Factorize the variables from the evaluation data set:
 
-```{r echo=TRUE}
+```{r echo=FALSE}
 insurance.evl$TARGET_FLAG <- as.factor(insurance.evl$TARGET_FLAG)
 insurance.evl$PARENT1 <- as.factor(insurance.evl$PARENT1)
 insurance.evl$SEX <- as.factor(insurance.evl$SEX)
@@ -766,7 +928,7 @@ insurance.evl$URBANICITY <- as.factor(insurance.evl$URBANICITY)
 ```
 
 ### Data imputing for evaluation data set:
-```{r}
+```{r, echo=FALSE}
 meanVal <- mean(insurance.evl$CAR_AGE, na.rm=TRUE)
 medianVal <- median(insurance.evl$CAR_AGE, na.rm=TRUE)
 
@@ -821,26 +983,27 @@ insurance.evl = insurance.evl %>% mutate(PARENT1=as.numeric(PARENT1  == "Yes" ))
 insurance.evl = insurance.evl %>% mutate(URBAN=as.numeric(URBANICITY  == "Highly Urban/ Urban")) %>% 
                                   select(-URBANICITY)
 
+insurance.evl$OLDCLAIM_YRLY_AVG <- insurance.evl$OLDCLAIM / 5
+insurance.evl$OLDCLAIM <- NULL
 ```
 
 
-###Final Results:
+### Final Results:
 
 Here's our final results from the above models:
 
-Though it was easier to predict the *target flag* - which indicates if someone gets into a crash or not, it was not easier to predict the *TARGET AMOUNT* which indicates how much amount will be claimed. So, the target claim amount from a crash seemes to be more random.
+Though it was easier to predict the *target flag* - which indicates 'if someone gets into a crash or not', however it was not easier to predict the *TARGET AMOUNT* which indicates 'how much amount will be claimed'. So, the target claim amount from a crash seems to be more random.
 
 
 ```{r}
 #Predict Target Flag using Logistic Regression
-insurance.target.flag.prd <- predict(model.backward.step.log,newdata=subset(insurance.evl,select=c(HOMEKIDS , PARENT1 , HOME_VAL , TRAVTIME , BLUEBOOK , 
-    TIF , OLDCLAIM , CLM_FREQ , REVOKED , MVR_PTS , CARUSE_COMMERCIAL , 
+insurance.target.flag.prd <- predict(model.backward.step.log, newdata=subset(insurance.evl,select=c(HOMEKIDS ,YOJ, PARENT1 , TRAVTIME , BLUEBOOK , TIF , CLM_FREQ , REVOKED , MVR_PTS ,OLDCLAIM_YRLY_AVG, HOME_VAL_LOG, CARUSE_COMMERCIAL , 
     EDU_BACH_MAST_PHD , JOB_WHITECOLLAR , KIDSDRIV_2 , MARRIED , 
     CAR_TYPE_vAN , CAR_TYPE_SUV , CAR_TYPE_SPORTS , CAR_TYPE_PICKUP , 
-    CAR_TYPE_PANTRUCK , URBAN)),type='response')
+    CAR_TYPE_PANTRUCK , URBAN, INCOME)),type='response')
 
+#Since our cut off is 0.3.
 insurance.target.flag.prd <- ifelse(insurance.target.flag.prd > 0.3, 1, 0)
-
 insurance.evl$predicted <- insurance.target.flag.prd
 insurance.evl$TARGET_FLAG <- factor(insurance.evl$predicted)
 
@@ -851,7 +1014,530 @@ insurance.evl$TARGET_AMT<- round(predict(model.backward.step.mlr, newdata = insu
 #Final Results.
 kable(subset(insurance.evl, select=c(INDEX, TARGET_FLAG,TARGET_AMT, MALE, MARRIED, EDU_BACH_MAST_PHD))) 
 #, JOB_WHITECOLLAR, KIDSDRIV_2, URBAN, RED_SPORTS_CAR
+```
 
+
+## Appendix
+
+```{r eval=FALSE, echo=TRUE, options(width = 80)}
+
+ library(dplyr)
+ library(ggplot2)
+ library(gridExtra)
+ library(car)
+ library(recommenderlab)
+ library(knitr)
+ library(caret)
+ library(pROC)
+
+desc <- 'data_desc.csv'
+
+data_desc <- read.csv(desc)
+kable(data_desc[,1:2])
+
+insurance.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance_training_data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+insurance.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW4/insurance-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+glimpse(insurance.trn)
+summary(insurance.trn)
+cleanUpAmounts <- function(amount) {
+  return(as.numeric(gsub("\\$*|,", "", amount)))
+}
+insurance.trn$INCOME <- sapply(insurance.trn$INCOME, cleanUpAmounts)
+insurance.trn$HOME_VAL <- sapply(insurance.trn$HOME_VAL, cleanUpAmounts)
+insurance.trn$BLUEBOOK <- sapply(insurance.trn$BLUEBOOK, cleanUpAmounts)
+insurance.trn$OLDCLAIM <- sapply(insurance.trn$OLDCLAIM, cleanUpAmounts)
+boxIncome <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+histIncome <- ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+grid.arrange(boxIncome, histIncome, ncol=2,  top = "INCOME: Box Plot & Histogram")
+boxHomeVal <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+histHomeVal <- ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+grid.arrange(boxHomeVal, histHomeVal, ncol=2,  top = "HOME_VAL: Box Plot & Histogram")
+
+gg.age <- ggplot(data = insurance.trn) + geom_histogram(aes(x=AGE)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+gg.bluebook <- ggplot(data = insurance.trn) + geom_histogram(aes(x=BLUEBOOK)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+gg.carage <- ggplot(data = insurance.trn) + geom_histogram(aes(x=CAR_AGE)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+#Total Clamins (Past 5 Years) , Lets take average and draw the histogram.
+insurance.trn$OLDCLAIM.AVG <- insurance.trn$OLDCLAIM/5
+gg.oldclaimavg <- ggplot(data = insurance.trn) + geom_histogram(aes(x=log(OLDCLAIM.AVG)), binwidth = 0.5) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+insurance.trn$OLDCLAIM.AVG <- NULL
+#People who have been customers for a long time are usually more safe.
+gg.tif <- ggplot(data = insurance.trn) + geom_histogram(aes(x=TIF)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+#TRAVTIME - Long drives to work usually suggest greater risk
+gg.traveltm <- ggplot(data = insurance.trn) + geom_histogram(aes(x=TRAVTIME)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+#YOJ - People who stay at a job for a long time are usually more safe
+gg.yoj <- ggplot(data = insurance.trn) + geom_histogram(aes(x=YOJ)) +  theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+grid.arrange(gg.age, gg.bluebook, gg.carage, gg.oldclaimavg,gg.tif,gg.traveltm,gg.yoj, ncol=2)
+insurance.trn$INDEX <- NULL
+
+cleanUpPrefix <- function(stringVal) {
+  return(gsub('z_', '', stringVal))
+}
+
+insurance.trn$MSTATUS <- sapply(insurance.trn$MSTATUS, cleanUpPrefix)
+insurance.trn$SEX <- sapply(insurance.trn$SEX, cleanUpPrefix)
+insurance.trn$EDUCATION <- sapply(insurance.trn$EDUCATION, cleanUpPrefix)
+insurance.trn$JOB <- sapply(insurance.trn$JOB, cleanUpPrefix)
+insurance.trn$CAR_TYPE <- sapply(insurance.trn$CAR_TYPE, cleanUpPrefix)
+insurance.trn$TARGET_FLAG <- as.factor(insurance.trn$TARGET_FLAG)
+insurance.trn$PARENT1 <- as.factor(insurance.trn$PARENT1)
+insurance.trn$SEX <- as.factor(insurance.trn$SEX)
+insurance.trn$MSTATUS <- as.factor(insurance.trn$MSTATUS)
+insurance.trn$EDUCATION <- as.factor(insurance.trn$EDUCATION)
+insurance.trn$JOB <- as.factor(insurance.trn$JOB)
+insurance.trn$CAR_USE <- as.factor(insurance.trn$CAR_USE)
+insurance.trn$CAR_TYPE <- as.factor(insurance.trn$CAR_TYPE)
+insurance.trn$RED_CAR <- as.factor(insurance.trn$RED_CAR)
+insurance.trn$REVOKED <- as.factor(insurance.trn$REVOKED)
+insurance.trn$URBANICITY <- as.factor(insurance.trn$URBANICITY)
+insurance.trn$OLDCLAIM_YRLY_AVG <- insurance.trn$OLDCLAIM / 5
+insurance.trn$OLDCLAIM <- NULL
+ggplot(data = insurance.trn) + geom_histogram(aes(x=CAR_AGE), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=8))
+
+meanVal <- mean(insurance.trn$CAR_AGE, na.rm=TRUE)
+medianVal <- median(insurance.trn$CAR_AGE, na.rm=TRUE)
+
+insurance.trn$CAR_AGE<- ifelse( insurance.trn$CAR_AGE <=0 , medianVal, insurance.trn$CAR_AGE)
+insurance.trn$CAR_AGE<- ifelse(is.na( insurance.trn$CAR_AGE )==TRUE, medianVal, insurance.trn$CAR_AGE)
+
+summary(insurance.trn$CAR_AGE)
+
+ggplot(data = insurance.trn) + geom_histogram(aes(x=YOJ), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+
+medianVal <- median(insurance.trn$YOJ, na.rm=TRUE)
+
+insurance.trn$YOJ<- ifelse(is.na( insurance.trn$YOJ )==TRUE, medianVal, insurance.trn$YOJ)
+
+summary(insurance.trn$YOJ)
+
+boxAge <- ggplot(data = insurance.trn) + geom_boxplot(aes(x=1, y=AGE)) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+histAge <- ggplot(data = insurance.trn) + geom_histogram(aes(x=AGE), binwidth = 0.5) + theme(axis.text=element_text(size=8), axis.title=element_text(size=10))
+grid.arrange(boxAge, histAge, ncol=2,  top = "AGE: Box Plot & Histogram")
+
+medianVal <- median(insurance.trn$AGE, na.rm=TRUE)
+
+insurance.trn$AGE<- ifelse(is.na( insurance.trn$AGE )==TRUE, medianVal, insurance.trn$AGE)
+
+summary(insurance.trn$AGE)
+
+#reference: https://www.youtube.com/watch?v=_c3dVTRIK9c
+Xfrmlog10 = function(x) {
+   return (logb(x+1, 10))
+}
+
+#First lets put zeroes where its NA & then transform using signedlog10
+insurance.trn$INCOME <- ifelse(is.na( insurance.trn$INCOME)==TRUE, 0, insurance.trn$INCOME)
+insurance.trn$INCOME_LOG <- sapply(insurance.trn$INCOME, Xfrmlog10)
+
+summary(insurance.trn$INCOME_LOG)
+
+#Now impute the zeros with median
+insurance.trn$INCOME_LOG<- ifelse(insurance.trn$INCOME_LOG ==0, median(insurance.trn$INCOME_LOG), insurance.trn$INCOME_LOG)
+
+summary(insurance.trn$INCOME_LOG)
+
+ggplot(data = insurance.trn) + geom_histogram(aes(x=INCOME_LOG), binwidth =0.1 ) + ggtitle("INCOME LOG base 10 - Hist")+ theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) 
+  
+#reference: https://www.youtube.com/watch?v=_c3dVTRIK9c
+
+#First lets put zeroes where its NA & then transform using signedlog10
+insurance.trn$HOME_VAL <- ifelse(is.na( insurance.trn$HOME_VAL)==TRUE, 0, insurance.trn$INCOME)
+insurance.trn$HOME_VAL_LOG <- sapply(insurance.trn$HOME_VAL, Xfrmlog10)
+
+summary(insurance.trn$HOME_VAL_LOG)
+
+#Now impute the zeros with median
+insurance.trn$HOME_VAL_LOG<- ifelse(insurance.trn$HOME_VAL_LOG ==0, median(insurance.trn$HOME_VAL_LOG), insurance.trn$HOME_VAL_LOG)
+
+summary(insurance.trn$HOME_VAL_LOG)
+
+ggplot(data = insurance.trn) + geom_histogram(aes(x=HOME_VAL_LOG), binwidth =0.1 ) + ggtitle("HOME_VAL_LOG - Hist")+ theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) 
+
+round(prop.table(table(insurance.trn$CAR_USE,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(CARUSE_COMMERCIAL=as.numeric(CAR_USE=="Commercial"))  %>% select(-CAR_USE)
+
+table(insurance.trn$EDUCATION)
+round(prop.table(table(insurance.trn$EDUCATION,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(EDU_BACH_MAST_PHD=as.numeric(EDUCATION %in% c("PhD", "Masters", "Bachelors")))  %>% select(-EDUCATION)
+
+round(prop.table(table(insurance.trn$JOB,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(JOB_WHITECOLLAR=as.numeric(JOB %in% c("Manager", "Lawyer", "Doctor", "Professional"))) %>% select(-JOB)
+
+#KIDSDRIV is "number of driving children""
+round(prop.table(table(insurance.trn$KIDSDRIV,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(KIDSDRIV_2=as.numeric(KIDSDRIV %in% c(1,2)),
+                                         KIDSDRIV_4=as.numeric(KIDSDRIV %in% c(2,4))) %>% 
+                                  select(-KIDSDRIV)
+
+round(prop.table(table(insurance.trn$MSTATUS,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(MARRIED=as.numeric(MSTATUS  == "Yes")) %>% 
+                                  select(-MSTATUS)
+
+round(prop.table(table(insurance.trn$RED_CAR,insurance.trn$TARGET_FLAG),1),2)
+round(prop.table(table(insurance.trn$CAR_TYPE,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(RED_SPORTS_CAR=as.numeric(RED_CAR  == "yes" & CAR_TYPE == 'Sports Car')) %>% 
+                                  select(-RED_CAR)
+
+round(prop.table(table(insurance.trn$RED_SPORTS_CAR,insurance.trn$TARGET_FLAG),1),2)
+
+round(prop.table(table(insurance.trn$REVOKED,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(REVOKED=as.numeric(REVOKED  == "Yes" )) 
+
+
+round(prop.table(table(insurance.trn$SEX,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(MALE=as.numeric(SEX  == "M" ))  %>% select(-SEX)
+
+round(prop.table(table(insurance.trn$CAR_TYPE,insurance.trn$TARGET_FLAG),1),2)
+
+insurance.trn = insurance.trn %>% mutate(CAR_TYPE_vAN=as.numeric(CAR_TYPE == "Van"),
+                                         CAR_TYPE_SUV=as.numeric(CAR_TYPE == "SUV"),
+                                         CAR_TYPE_SPORTS=as.numeric(CAR_TYPE == "Sports Car"),
+                                         CAR_TYPE_PICKUP=as.numeric(CAR_TYPE == "Pickup"),
+                                         CAR_TYPE_PANTRUCK=as.numeric(CAR_TYPE == "Panel Truck")) %>% 
+                                  select(-CAR_TYPE)
+
+round(prop.table(table(insurance.trn$PARENT1,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(PARENT1=as.numeric(PARENT1  == "Yes" ))
+
+round(prop.table(table(insurance.trn$URBANICITY,insurance.trn$TARGET_FLAG),1),2)
+insurance.trn = insurance.trn %>% mutate(URBAN=as.numeric(URBANICITY  == "Highly Urban/ Urban")) %>% 
+                                  select(-URBANICITY)
+
+glimpse(insurance.trn)
+summary(insurance.trn)
+
+#alias(glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial"))
+fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- vif(fit)
+
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+kable(vif.df)
+
+insurance.trn$INCOME_LOG <- NULL
+fit <- glm(TARGET_FLAG ~ .- TARGET_AMT, data=insurance.trn, family = "binomial")
+
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- vif(fit)
+
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+kable(vif.df)
+
+set.seed(2) 
+s=sample(1:nrow(insurance.trn),0.75*nrow(insurance.trn)) 
+insurance.training=insurance.trn[s,] 
+insurance.test=insurance.trn[-s,]
+
+fit.log <- stats::glm(TARGET_FLAG ~ .-TARGET_AMT , family=binomial(), data =insurance.training)
+model.backward.step.log = step(fit.log , trace = FALSE) 
+
+summary(model.backward.step.log) 
+formula(model.backward.step.log)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.backward.step.log, main="Stepwise Backward Logistic Regression")
+
+#### Stepwise Forward Logistic Regression:
+
+nothing.mod.lgr <- glm(TARGET_FLAG ~ 1,family=binomial, data=na.omit(insurance.training))
+model.forward.step.log  = step(nothing.mod.lgr,
+    scope=list(lower=formula(nothing.mod.lgr),upper=formula(fit.log)), direction="forward", trace = FALSE)
+
+summary(model.forward.step.log) 
+formula(model.forward.step.log)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.forward.step.log, main="Stepwise Forward Logistic Regression")
+
+Based on the data descriptions, and the significant predictors noticed above, lets create a manual logistic model.
+
+model.manual.fit.log <- stats::glm(TARGET_FLAG ~ +AGE +CARUSE_COMMERCIAL +CLM_FREQ +HOME_VAL_LOG +JOB_WHITECOLLAR +KIDSDRIV_2 +KIDSDRIV_4 +MARRIED +MVR_PTS +OLDCLAIM_YRLY_AVG +REVOKED +MALE +TIF +TRAVTIME +YOJ -TARGET_AMT , family=binomial(), data =insurance.training)
+
+summary(model.manual.fit.log) 
+formula(model.manual.fit.log)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.manual.fit.log, main="Manuel Logistic Regression")
+
+Build different linear models to predict the amount for TARGET_AMT
+
+fit.mlr <- lm(formula = TARGET_AMT ~. -TARGET_FLAG , data = insurance.training)
+model.backward.step.mlr <- step(fit.mlr, trace=FALSE)
+
+summary(model.backward.step.mlr) 
+formula(model.backward.step.mlr)
+
+
+par(mfrow=c(2, 2))
+graphics::plot(model.backward.step.mlr, main="Stepwise Backward Linear Regression")
+
+nothing.mod.lnr <- lm(TARGET_AMT ~ 1, data=insurance.training)
+model.forward.step.mlr <- step(nothing.mod.lnr, scope=list(lower=formula(nothing.mod.lnr),upper=formula(fit.mlr)), direction = 'forward', trace=FALSE)
+
+summary(model.forward.step.mlr)
+formula(model.forward.step.mlr)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.forward.step.mlr, main="Stepwise Forward Linear Regression")
+model.manual.fit.mlr <- stats::lm(TARGET_AMT ~ +AGE +CARUSE_COMMERCIAL +CLM_FREQ +HOME_VAL_LOG +JOB_WHITECOLLAR +KIDSDRIV_2 +KIDSDRIV_4 +MARRIED +MVR_PTS +OLDCLAIM_YRLY_AVG +REVOKED +MALE +TIF +TRAVTIME +YOJ -TARGET_FLAG , data =insurance.training)
+
+summary(model.manual.fit.mlr) 
+formula(model.manual.fit.mlr)
+
+par(mfrow=c(2, 2))
+graphics::plot(model.manual.fit.mlr, main="Manuel Linear Regression")
+
+#Storage to keep performance measures that would aid us in selecting the best model:
+#performance.results <- c( model = character(),  Sn = numeric(), Sp = numeric, Accuracy = numeric())
+performance.results1 <- vector()
+insurance.test$score=predict(model.backward.step.log,insurance.test,type="response")
+ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG))) + geom_point() + geom_jitter()
+cutoff=0.3
+insurance.test$predicted=as.numeric(insurance.test$score>cutoff) 
+TP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==1) 
+FP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==0) 
+FN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==1) 
+TN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==0)
+
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_FLAG), positive = "1")
+
+sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4)
+
+specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4)
+
+#accuracy = (TP+TN)/(P+N)
+accuracy <- round( ( (TP + TN) / (P + N) ) , 4)
+
+cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1")
+roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE)
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4)
+performance.results1 <- rbind(performance.results1, c("Step wise Backward",sensitivity, specificity,  accuracy, auc))
+insurance.test$score=predict(model.forward.step.log,insurance.test,type="response")
+ggplot(insurance.test,aes(x=score,y=TARGET_FLAG,color=factor(TARGET_FLAG))) + geom_point() + geom_jitter()
+
+cutoff=0.3
+insurance.test$predicted=as.numeric(insurance.test$score>cutoff) 
+TP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==1) 
+FP=sum(insurance.test$predicted==1 & insurance.test$TARGET_FLAG==0) 
+FN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==1) 
+TN=sum(insurance.test$predicted==0 & insurance.test$TARGET_FLAG==0)
+
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+
+confusionMatrix(factor(insurance.test$predicted), factor(insurance.test$TARGET_FLAG), positive = "1")
+
+sensitivity <- round(sensitivity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, positive="1"), 4)
+
+specificity <- round(specificity(factor(insurance.test$predicted),insurance.test$TARGET_FLAG, negative="0"),4)
+
+#accuracy = (TP+TN)/(P+N)
+accuracy <- round( ( (TP + TN) / (P + N) ) , 4)
+
+cnfMtx <- confusionMatrix(insurance.test$predicted, insurance.test$TARGET_FLAG, positive = "1")
+### AUC - Forward
+
+roc <- roc(factor(predicted)~as.numeric(TARGET_FLAG),data=insurance.test, plot=FALSE, ci=TRUE)
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3)
+auc <- round(auc(factor(predicted)~as.numeric(TARGET_FLAG),insurance.test),4)
+performance.results1 <- rbind(performance.results1, c("Step wise Forward",sensitivity, specificity,  accuracy, auc))
+
+### Compare Results:
+
+results <- as.data.frame(performance.results1);
+colnames(results) <- c("Method", "Sn", "Sp", "Accuracy", "AUC")
+kable(results)
+
+From the above, both the models result the same in predicting the target variable of the given dataset.
+
+### Mulitple Linear Regression:
+
+Measure performance among Mulitple Linear Regression models and select one
+
+#### Stepwise Backward Linear Regression Performance:
+
+Performance on the test data:
+
+
+performance.results2 <- c()
+
+#Adjusted R squared
+ar2 <-  summary(model.backward.step.mlr)$adj.r.squared
+
+#Root mean sqaure error:
+rmse=sqrt(mean((predict(model.backward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2))
+
+#plot(insurance.test$TARGET_AMT,predict(model.backward.step.mlr,insurance.test))
+#hist(model.step.mlr$residuals,breaks = 20)
+
+performance.results2 <- rbind(performance.results2, c("Step wise Backward",ar2, rmse))
+
+
+#Adjusted R squared
+ar2 <-  summary(model.forward.step.mlr)$adj.r.squared
+
+#Root mean sqaure error:
+rmse=sqrt(mean((predict(model.forward.step.mlr,insurance.test)-insurance.test$TARGET_AMT)**2))
+
+#plot(insurance.test$TARGET_AMT,predict(model.forward.step.mlr,insurance.test))
+#hist(model.step.mlr$residuals,breaks = 20)
+
+performance.results2 <- rbind(performance.results2, c("Step wise Forward",ar2, rmse))
+
+
+###Compare Results:
+
+results <- as.data.frame(performance.results2);
+colnames(results) <- c("Method", "Adj R Squared", "RMSE")
+kable(results)
+
+From the above, both the models result in poor performance in predicting the target variable of amount from the given dataset. So, predicting the target crash amount would be difficult with our above assumptions.
+
+However, the *Step wise Backward* method performed better in multiple linear regression case. So, we will finalize backward model for *target amount* prediction.
+
+
+## Evaluation:
+
+ Lets apply the final models on the evaluation dataset. We will first tidy the evaluation dataset and then predit the *TARGET_FLAG* and *TARGET_AMT*
+
+insurance.evl$INCOME <- sapply(insurance.evl$INCOME, cleanUpAmounts)
+insurance.evl$HOME_VAL <- sapply(insurance.evl$HOME_VAL, cleanUpAmounts)
+insurance.evl$BLUEBOOK <- sapply(insurance.evl$BLUEBOOK, cleanUpAmounts)
+insurance.evl$OLDCLAIM <- sapply(insurance.evl$OLDCLAIM, cleanUpAmounts)
+
+'z_' will be removed from **MSTATUS, SEX, EDUCATION, JOB, CAR_TYPE**
+
+insurance.evl$MSTATUS <- sapply(insurance.evl$MSTATUS, cleanUpPrefix)
+insurance.evl$SEX <- sapply(insurance.evl$SEX, cleanUpPrefix)
+insurance.evl$EDUCATION <- sapply(insurance.evl$EDUCATION, cleanUpPrefix)
+insurance.evl$JOB <- sapply(insurance.evl$JOB, cleanUpPrefix)
+insurance.evl$CAR_TYPE <- sapply(insurance.evl$CAR_TYPE, cleanUpPrefix)
+
+### Factorize the variables from the evaluation data set:
+insurance.evl$TARGET_FLAG <- as.factor(insurance.evl$TARGET_FLAG)
+insurance.evl$PARENT1 <- as.factor(insurance.evl$PARENT1)
+insurance.evl$SEX <- as.factor(insurance.evl$SEX)
+insurance.evl$MSTATUS <- as.factor(insurance.evl$MSTATUS)
+insurance.evl$EDUCATION <- as.factor(insurance.evl$EDUCATION)
+insurance.evl$JOB <- as.factor(insurance.evl$JOB)
+insurance.evl$CAR_USE <- as.factor(insurance.evl$CAR_USE)
+insurance.evl$CAR_TYPE <- as.factor(insurance.evl$CAR_TYPE)
+insurance.evl$RED_CAR <- as.factor(insurance.evl$RED_CAR)
+insurance.evl$REVOKED <- as.factor(insurance.evl$REVOKED)
+insurance.evl$URBANICITY <- as.factor(insurance.evl$URBANICITY)
+
+### Data imputing for evaluation data set:
+meanVal <- mean(insurance.evl$CAR_AGE, na.rm=TRUE)
+medianVal <- median(insurance.evl$CAR_AGE, na.rm=TRUE)
+
+insurance.evl$CAR_AGE<- ifelse( insurance.evl$CAR_AGE <=0 , medianVal, insurance.evl$CAR_AGE)
+insurance.evl$CAR_AGE<- ifelse(is.na( insurance.evl$CAR_AGE )==TRUE, medianVal, insurance.evl$CAR_AGE)
+
+medianVal <- median(insurance.evl$YOJ, na.rm=TRUE)
+insurance.evl$YOJ<- ifelse(is.na( insurance.evl$YOJ )==TRUE, medianVal, insurance.evl$YOJ)
+
+medianVal <- median(insurance.evl$AGE, na.rm=TRUE)
+insurance.evl$AGE<- ifelse(is.na( insurance.evl$AGE )==TRUE, medianVal, insurance.evl$AGE)
+
+insurance.evl$INCOME <- ifelse(is.na( insurance.evl$INCOME)==TRUE, 0, insurance.evl$INCOME)
+insurance.evl$INCOME_LOG <- sapply(insurance.evl$INCOME, Xfrmlog10)
+insurance.evl$INCOME_LOG<- ifelse(insurance.evl$INCOME_LOG ==0, median(insurance.evl$INCOME_LOG), insurance.evl$INCOME_LOG)
+
+insurance.evl$HOME_VAL <- ifelse(is.na( insurance.evl$HOME_VAL)==TRUE, 0, insurance.evl$INCOME)
+insurance.evl$HOME_VAL_LOG <- sapply(insurance.evl$HOME_VAL, Xfrmlog10)
+insurance.evl$HOME_VAL_LOG<- ifelse(insurance.evl$HOME_VAL_LOG ==0, median(insurance.evl$HOME_VAL_LOG), insurance.evl$HOME_VAL_LOG)
+
+insurance.evl = insurance.evl %>% mutate(CARUSE_COMMERCIAL=as.numeric(CAR_USE=="Commercial"))  %>% select(-CAR_USE)
+
+insurance.evl = insurance.evl %>% mutate(EDU_BACH_MAST_PHD=as.numeric(EDUCATION %in% c("PhD", "Masters", "Bachelors")))  %>% select(-EDUCATION)
+
+insurance.evl = insurance.evl %>% mutate(JOB_WHITECOLLAR=as.numeric(JOB %in% c("Manager", "Lawyer", "Doctor", "Professional"))) %>% select(-JOB)
+
+
+insurance.evl = insurance.evl %>% mutate(KIDSDRIV_2=as.numeric(KIDSDRIV %in% c(1,2)),
+                                         KIDSDRIV_4=as.numeric(KIDSDRIV %in% c(2,4))) %>% 
+                                  select(-KIDSDRIV)
+
+insurance.evl = insurance.evl %>% mutate(MARRIED=as.numeric(MSTATUS  == "Yes")) %>% 
+                                  select(-MSTATUS)
+
+insurance.evl = insurance.evl %>% mutate(RED_SPORTS_CAR=as.numeric(RED_CAR  == "yes" & CAR_TYPE == 'Sports Car')) %>% 
+                                  select(-RED_CAR)
+
+insurance.evl = insurance.evl %>% mutate(REVOKED=as.numeric(REVOKED  == "Yes" )) 
+
+insurance.evl = insurance.evl %>% mutate(MALE=as.numeric(SEX  == "M" ))  %>% select(-SEX)
+
+insurance.evl = insurance.evl %>% mutate(CAR_TYPE_vAN=as.numeric(CAR_TYPE == "Van"),
+                                         CAR_TYPE_SUV=as.numeric(CAR_TYPE == "SUV"),
+                                         CAR_TYPE_SPORTS=as.numeric(CAR_TYPE == "Sports Car"),
+                                         CAR_TYPE_PICKUP=as.numeric(CAR_TYPE == "Pickup"),
+                                         CAR_TYPE_PANTRUCK=as.numeric(CAR_TYPE == "Panel Truck")) %>% 
+                                  select(-CAR_TYPE)
+
+insurance.evl = insurance.evl %>% mutate(PARENT1=as.numeric(PARENT1  == "Yes" ))
+
+
+insurance.evl = insurance.evl %>% mutate(URBAN=as.numeric(URBANICITY  == "Highly Urban/ Urban")) %>% 
+                                  select(-URBANICITY)
+
+insurance.evl$OLDCLAIM_YRLY_AVG <- insurance.evl$OLDCLAIM / 5
+insurance.evl$OLDCLAIM <- NULL
+
+
+#Final Results:
+
+#Here's our final results from the above models:
+
+#Though it was easier to predict the *target flag* - which indicates 'if someone gets into a crash or not', however it was not #easier to predict the *TARGET AMOUNT* which indicates 'how much amount will be claimed'. So, the target claim amount from a #crash seems to be more random.
+
+
+#Predict Target Flag using Logistic Regression
+insurance.target.flag.prd <- predict(model.backward.step.log, newdata=subset(insurance.evl,select=c(HOMEKIDS ,YOJ, PARENT1 , TRAVTIME , BLUEBOOK , TIF , CLM_FREQ , REVOKED , MVR_PTS ,OLDCLAIM_YRLY_AVG, HOME_VAL_LOG, CARUSE_COMMERCIAL , 
+    EDU_BACH_MAST_PHD , JOB_WHITECOLLAR , KIDSDRIV_2 , MARRIED , 
+    CAR_TYPE_vAN , CAR_TYPE_SUV , CAR_TYPE_SPORTS , CAR_TYPE_PICKUP , 
+    CAR_TYPE_PANTRUCK , URBAN, INCOME)),type='response')
+
+#Since our cut off is 0.3.
+insurance.target.flag.prd <- ifelse(insurance.target.flag.prd > 0.3, 1, 0)
+insurance.evl$predicted <- insurance.target.flag.prd
+insurance.evl$TARGET_FLAG <- factor(insurance.evl$predicted)
+
+
+#Predict Amount using Multiple Linear Regression
+insurance.evl$TARGET_AMT<- round(predict(model.backward.step.mlr, newdata = insurance.evl))
+
+#Final Results.
+kable(subset(insurance.evl, select=c(INDEX, TARGET_FLAG,TARGET_AMT, MALE, MARRIED, EDU_BACH_MAST_PHD))) 
+#, JOB_WHITECOLLAR, KIDSDRIV_2, URBAN, RED_SPORTS_CAR
 
 ```
 
