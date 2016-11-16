@@ -1,0 +1,49 @@
+---
+title: "Critical Thinking Group 4 - HW5 - Wine"
+author: "Sreejaya, Suman, Vuthy"
+date: "November 15, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+options(scipen=999)
+```
+
+
+```{r, load libraries}
+ library(dplyr)
+ library(ggplot2)
+ library(gridExtra)
+ library(car)
+ library(recommenderlab)
+ library(knitr)
+ library(caret)
+ library(pROC)
+```
+
+# Overview
+
+**Dataset**  
+[Wine - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv)  
+[Wine - Evaluation Data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv)  
+
+## Data Exploration
+
+```{r read data}
+wine.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+
+wine.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+```
+## Data Preparation
+
+## Build  Models
+
+## Model Selection
+
+## Appendix
+
+```{r eval=FALSE, echo=TRUE, options(width = 80)}
+
+```
