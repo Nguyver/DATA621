@@ -13,17 +13,18 @@ options(scipen=999)
 
 
 ```{r, load libraries}
- library(dplyr)
- library(ggplot2)
- library(gridExtra)
- library(car)
- library(recommenderlab)
- library(knitr)
- library(caret)
- library(pROC)
+  library(dplyr)
+ # library(ggplot2)
+ # library(gridExtra)
+ # library(car)
+ # library(recommenderlab)
+ # library(knitr)
+ # library(caret)
+ # library(pROC)
 ```
 
 # Overview
+The objective of this assignment is to predict the number of cases of wine that will be sold based on the properties of the wine. A count regression model will be used to predict wine sales.
 
 **Dataset**  
 [Wine - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv)  
@@ -36,6 +37,12 @@ wine.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/mast
 
 wine.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
 ```
+
+```{r}
+summary(wine.trn)
+glimpse(wine.trn)
+```
+
 ## Data Preparation
 
 ## Build  Models
