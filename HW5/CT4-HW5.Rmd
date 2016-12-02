@@ -43,6 +43,30 @@ summary(wine.trn)
 glimpse(wine.trn)
 ```
 
+### Missing Data
+
+Eight of the variables have missing data.
+
+```{r eval=FALSE}
+na_count <-data.frame(sapply(wine.trn, function(y) sum(length(which(is.na(y))))))
+
+na_count$prc <- sapply(na_count, function(y) sum(length(which(is.na(y)))))
+
+#Table Generated manually. Will try to generate metrics automatically later on
+```
+
+| Variable Name      | Number | % NA  |
+|--------------------|--------|-------|
+| ResidualSugar      | 616    | 4.8%  |
+| Chlorides          | 638    | 4.9%  |
+| FreeSulfurDioxide  | 647    | 5.0%  |
+| TotalSulfurDioxide | 682    | 5.3%  |
+| pH                 | 395    | 3.0%  |
+| Sulphates          | 1210   | 9.4%  |
+| Alcohol            | 653    | 5.1%  |
+| STARS              | 3359   | 26.2% |
+  
+
 ## Data Preparation
 
 ## Build  Models
