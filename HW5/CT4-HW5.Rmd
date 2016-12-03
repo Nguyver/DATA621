@@ -13,7 +13,8 @@ options(scipen=999)
 
 
 ```{r, load libraries}
-  library(dplyr)
+library(dplyr)
+library(psych)
  # library(ggplot2)
  # library(gridExtra)
  # library(car)
@@ -66,6 +67,50 @@ na_count$prc <- sapply(na_count, function(y) sum(length(which(is.na(y)))))
 | Alcohol            | 653    | 5.1%  |
 | STARS              | 3359   | 26.2% |
   
+
+```{r}
+
+#1. Remove INDEX variable
+names(wine.trn1)
+wine.trn1 <- wine.trn[,-1]
+
+#2.  Let us see WINE Data Histograms
+dev.off()
+layout(matrix(1:15,3,5,byrow=TRUE))
+#par(mfrow=c(3,5))
+par(mar=c(2,1,2,1))
+for (i in 1:ncol(wine.trn1))  hist(wine.trn1[,i],main = names(wine.trn1)[i])
+
+#3.  now WINE Data Boxplot
+
+layout(matrix(1:15,3,5,byrow=TRUE))
+#par(mfrow=c(3,5))
+par(mar=c(2,1,2,1))
+for (i in 1:ncol(wine.trn1))  boxplot(wine.trn1[,i],main = names(wine.trn1)[i])
+
+#4.
+library(PerformanceAnalytics)
+cor.matrix <- cor(wine.trn[,1:ncol(wine.trn)])
+chart.Correlation(cor.matrix, histogram=TRUE, pch=19)
+
+#5.
+#Replace na's with '0' in Alcohol (assuming non alcoholic wine)
+
+wine.trn$Alcohol[is.na(wine.trn$Alcohol)] <- 0
+#wine.trn$Alcohol
+
+#6. Convert Stars to Dummy variables 
+
+ library(dummies)
+ STARS <- wine.trn1
+ STARS <- cbind(STARS, dummy(STARS$STARS, sep = "_"))
+ head(STARS)
+ wine.trn1 <- STARS
+ wine.trn1 <- wine.trn1[,-wine.trn1$STARS]
+ wine.trn1 <- subset(wine.trn1, select = -c(STARS) )
+ head(wine.trn1)
+```
+
 
 ## Data Preparation
 
