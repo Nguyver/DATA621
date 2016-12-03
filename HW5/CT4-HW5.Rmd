@@ -162,23 +162,16 @@ The above indicates the *STARS* and *LabelAppeal* are significant variables from
 ## Data Preparation
 
 ```{r}
-#5.
-#Replace na's with '0' in Alcohol (assuming non alcoholic wine)
-
-#wine.trn1$Alcohol[is.na(wine.trn1$Alcohol)] <- 0
-#wine.trn$Alcohol
-
-#6. Convert Stars to Dummy variables 
-
- #install.packages("dummies")
-
-# STARS <- wine.trn1
-# STARS <- cbind(STARS, dummy(STARS$STARS, sep = "_"))
-# head(STARS)
-# wine.trn1 <- STARS
-# wine.trn1 <- wine.trn1[,-wine.trn1$STARS]
-# wine.trn1 <- subset(wine.trn1, select = -c(STARS) )
-# head(wine.trn1)
+wine.trn1$Alcohol[is.na(wine.trn1$Alcohol)] <- 0
+ #
+ STARS <- wine.trn1
+ STARS <- cbind(STARS, dummy(STARS$STARS, sep = "_"))
+ #head(STARS)
+ wine.trn1 <- STARS
+ #wine.trn1 <- wine.trn1[,-wine.trn1$STARS]
+ wine.trn1 <- subset(wine.trn1, select = -c(STARS) )
+ #head(wine.trn1)
+ summary(wine.trn1)
 ```
 
 
