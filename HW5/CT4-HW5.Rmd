@@ -15,8 +15,10 @@ options(scipen=999)
 ```{r, load libraries}
 library(dplyr)
 library(psych)
- # library(ggplot2)
- # library(gridExtra)
+library(ggplot2)
+library(gridExtra)
+library(Amelia)
+#library(reshape2)
  # library(car)
  # library(recommenderlab)
  # library(knitr)
@@ -34,9 +36,9 @@ The objective of this assignment is to predict the number of cases of wine that 
 ## Data Exploration
 
 ```{r read data}
-wine.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+wine.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE, na.strings=c("NA", ""))
 
-wine.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE)
+wine.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE, na.strings=c("NA", ""))
 ```
 
 ```{r}
@@ -44,55 +46,123 @@ summary(wine.trn)
 glimpse(wine.trn)
 ```
 
+Looks like the INDEX column name need to be corrected.
+```{r}
+colnames(wine.trn)[1] <- "INDEX"
+```
+
+
 ### Missing Data
 
 Eight of the variables have missing data.
 
 ```{r eval=FALSE}
-na_count <-data.frame(sapply(wine.trn, function(y) sum(length(which(is.na(y))))))
+na_count <-sapply(wine.trn, function(y) sum(length(which(is.na(y)))))
 
-na_count$prc <- sapply(na_count, function(y) sum(length(which(is.na(y)))))
+na_countPrc <- round(sapply(wine.trn, function(y) sum(length(which(is.na(y))))/ length(y) *100), 2)
 
-#Table Generated manually. Will try to generate metrics automatically later on
+na.df <- filter(data.frame(ColName =colnames(wine.trn) , NA_Count=na_count, NA_Percent=na_countPrc), NA_Count > 0)
+
+knitr::kable(filter(na.df, NA_Count > 0))
+
 ```
 
-| Variable Name      | Number | % NA  |
-|--------------------|--------|-------|
-| ResidualSugar      | 616    | 4.8%  |
-| Chlorides          | 638    | 4.9%  |
-| FreeSulfurDioxide  | 647    | 5.0%  |
-| TotalSulfurDioxide | 682    | 5.3%  |
-| pH                 | 395    | 3.0%  |
-| Sulphates          | 1210   | 9.4%  |
-| Alcohol            | 653    | 5.1%  |
-| STARS              | 3359   | 26.2% |
+Lets explore more on the missing values here:
+
+```{r}
+#Though Amelia package is okay, the missmap visual is not easily interprettable, so, lets try with the below:
+
+#http://www.njtierney.com/r/missing%20data/rbloggers/2015/12/01/ggplot-missing-data/
+ggplot_missing <- function(x){
   
+  x %>% 
+    is.na %>%
+    melt %>%
+    ggplot(data = .,
+           aes(x = Var2,
+               y = Var1)) +
+    geom_raster(aes(fill = value)) +
+    scale_fill_grey(name = "",
+                    labels = c("Present","Missing")) +
+    theme_minimal() + 
+    theme(axis.text.x  = element_text(angle=45, vjust=0.5)) + 
+    labs(x = "Variables in Dataset",
+         y = "Rows / observations")
+}
+```
+
+
+```{r}
+ggplot_missing(wine.trn)
+```
+
+Though there are lot of missing values, we could not see a definite pattern here, but we difinitely notice that there are highest number of missing values for *STARS* variable.
+
+
+```{r}
+ggplot(wine.trn, aes(x=factor(STARS), y=TARGET)) + geom_violin(aes(fill = factor(STARS))) + geom_boxplot(width=0.2) 
+
+ggplot(wine.trn, aes(x = TARGET, fill = factor(STARS))) + geom_density(alpha = 0.5)
+
+```
+
+From the above diagrams, we notice that the NAs for STARS showing us a different distribution. So, we have to take care of this in the data preparation.
+
+Lets check the overall distribution of the TAGET variable ( which is a *count variable* indicating the number of sample cases):
+
+### Data Distributions
+
+Lets review the *TARGET* variable distribution:
+
+```{r}
+ggplot(wine.trn, aes(x=TARGET)) + geom_histogram(binwidth = 0.5)+ theme(axis.text=element_text(size=10), axis.title=element_text(size=10))
+```
+
+The above *TARGET* distribution has lot of *ZERO* values, which would indicate the *no sample cases purchased*, which could be due to NA values presence Or, some business reasons. But overall this appears close to *Poisson* distribution.
+
+
+Lets check other variables distributions:
 
 ```{r}
 
 #1. Remove INDEX variable
-names(wine.trn1)
+names(wine.trn)
 wine.trn1 <- wine.trn[,-1]
 
 #2.  Let us see WINE Data Histograms
-dev.off()
+#dev.off()
 layout(matrix(1:15,3,5,byrow=TRUE))
 #par(mfrow=c(3,5))
 par(mar=c(2,1,2,1))
 for (i in 1:ncol(wine.trn1))  hist(wine.trn1[,i],main = names(wine.trn1)[i])
 
 #3.  now WINE Data Boxplot
-
 layout(matrix(1:15,3,5,byrow=TRUE))
 #par(mfrow=c(3,5))
 par(mar=c(2,1,2,1))
 for (i in 1:ncol(wine.trn1))  boxplot(wine.trn1[,i],main = names(wine.trn1)[i])
+```
 
+Most of the variables appears to be normally distributed.
+
+
+### Correlations
+
+Lets visualize the correlation graph:
+
+```{r}
 #4.
 library(PerformanceAnalytics)
-cor.matrix <- cor(wine.trn[,1:ncol(wine.trn)])
-chart.Correlation(cor.matrix, histogram=TRUE, pch=19)
+cor.matrix <- cor(wine.trn1[,1:ncol(wine.trn1)], use= "complete.obs")
+chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
+```
 
+The above indicates the *STARS* and *LabelAppeal* are significant variables from correlation perspective.
+
+
+## Data Preparation
+
+```{r}
 #5.
 #Replace na's with '0' in Alcohol (assuming non alcoholic wine)
 
@@ -101,6 +171,7 @@ wine.trn$Alcohol[is.na(wine.trn$Alcohol)] <- 0
 
 #6. Convert Stars to Dummy variables 
 
+ #install.packages("dummies")
  library(dummies)
  STARS <- wine.trn1
  STARS <- cbind(STARS, dummy(STARS$STARS, sep = "_"))
@@ -111,8 +182,6 @@ wine.trn$Alcohol[is.na(wine.trn$Alcohol)] <- 0
  head(wine.trn1)
 ```
 
-
-## Data Preparation
 
 ## Build  Models
 
