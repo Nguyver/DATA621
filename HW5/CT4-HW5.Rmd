@@ -335,6 +335,7 @@ nbm.backward.step = step(full.nbm , trace = FALSE)
 
 round(summary(nbm.backward.step)$coef,2)
 formula(nbm.backward.step)
+
 ```
 
 We noticed that our dataset do NOT has lot of overdispersion ( based on poission model above), so the negative binomial results are
