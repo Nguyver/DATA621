@@ -17,20 +17,21 @@ library(dplyr)
 library(psych)
 library(ggplot2)
 library(gridExtra)
+library(grid)
 library(Amelia)
 library(reshape2)
 library(dummies)
- # library(car)
- # library(recommenderlab)
- # library(knitr)
- # library(caret)
- # library(pROC)
+library(car)
+library(recommenderlab)
+library(knitr)
+library(faraway)
+library(MASS)
 ```
 
-## Overview
+# Overview
 The objective of this assignment is to predict the number of cases of wine that will be sold based on the properties of the wine. A count regression model will be used to predict wine sales.
 
-### Dataset  
+**Dataset**  
 [Wine - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv)  
 [Wine - Evaluation Data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv)  
 
@@ -48,9 +49,10 @@ glimpse(wine.trn)
 ```
 
 Looks like the INDEX column name need to be corrected.
-```{r echo=TRUE}
+```{r}
 colnames(wine.trn)[1] <- "INDEX"
 ```
+
 
 ### Missing Data
 
@@ -108,21 +110,6 @@ ggplot(wine.trn, aes(x = TARGET, fill = factor(STARS))) + geom_density(alpha = 0
 
 From the above diagrams, we notice that the NAs for STARS showing us a different distribution. So, we have to take care of this in the data preparation.
 
-### Negative Values
- 
-From the summary of the data, we can see that a few variables have negative values.
-```{r}
-
-neg_cnt <-sapply(wine.trn, function(y) sum(y<0, na.rm=TRUE))
-
-neg_prc <- round(sapply(wine.trn, function(y) sum(y<0, na.rm=TRUE)/length(y) *100), 2)
-
-neg.df <- filter(data.frame(ColName =colnames(wine.trn) , Negative_Count=neg_cnt, Percent_Negative=neg_prc), neg_cnt > 0)
-
-knitr::kable(neg.df)
-
-```
-
 ### Data Distributions
 
 Lets check the overall distribution of the TAGET variable ( which is a *count variable* indicating the number of sample cases):
@@ -156,7 +143,26 @@ par(mar=c(2,1,2,1))
 for (i in 1:ncol(wine.trn1))  boxplot(wine.trn1[,i],main = names(wine.trn1)[i])
 ```
 
-Most of the variables appears to be normally distributed.
+Majority of the variables appears to be numerical and normally distributed.Lets review the Ordinal variables here:
+
+We have seen the *STARS* distribution previosly in *Missing Data* section, lets now review the *Acid Index*, and *LabelAppeal*, which can be treated as categorical similar to *STARS*: 
+
+```{r}
+#unique(wine.trn1$AcidIndex)
+ 
+#check the distributions
+
+#round(prop.table(table(wine.trn1$AcidIndex,wine.trn1$TARGET),1),2)
+g1 <- ggplot(wine.trn, aes(x=factor(AcidIndex), y=TARGET)) + geom_violin(aes(fill = factor(AcidIndex))) 
+
+#unique(wine.trn1$LabelAppeal)
+#round(prop.table(table(wine.trn1$LabelAppeal,wine.trn1$TARGET),1),2)
+g2 <- ggplot(wine.trn, aes(x=factor(LabelAppeal), y=TARGET)) + geom_violin(aes(fill = factor(LabelAppeal))) 
+
+blank<-rectGrob(gp=gpar(col="white")) # make a white spacer grob
+grid.arrange(g1, blank, g2, heights=c(0.7, 0.05, 0.25), nrow=3)
+
+```
 
 
 ### Correlations
@@ -170,54 +176,282 @@ cor.matrix <- cor(wine.trn1[,1:ncol(wine.trn1)], use= "complete.obs")
 chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
 ```
 
-The above indicates the *STARS* and *LabelAppeal* are significant variables from correlation perspective.
+The above indicates the *STARS* and *LabelAppeal* are significant variables from correlation perspective. And *AcidIndex* and *VolatileAcidity* also got moderately correlated with the TARGET variable.
 
-### Correlations
 
 ## Data Preparation
 
+### Transform NAs
+
 ```{r}
 wine.trn1$Alcohol[is.na(wine.trn1$Alcohol)] <- 0
- #
- STARS <- wine.trn1
- STARS <- cbind(STARS, dummy(STARS$STARS, sep = "_"))
- #head(STARS)
- wine.trn1 <- STARS
- #wine.trn1 <- wine.trn1[,-wine.trn1$STARS]
- wine.trn1 <- subset(wine.trn1, select = -c(STARS) )
- #head(wine.trn1)
- summary(wine.trn1)
+wine.trn1$STARS[is.na(wine.trn1$STARS)] <- 0
 ```
 
+### Factorize
+
+```{r}
+wine.trn1$STARS <- as.factor(wine.trn1$STARS)
+wine.trn1$AcidIndex <- as.factor(wine.trn1$AcidIndex)
+wine.trn1$LabelAppeal <- as.factor(wine.trn1$LabelAppeal)
+```
+
+lets take complete cases only, as we have got sufficient number of observations after we took care of the NAs for STARS and Alcohol variables.
+
+```{r}
+wine.trn.omit.na <- na.omit(wine.trn1)
+glimpse(wine.trn.omit.na)
+```
+
+### Multicollinearity
+
+Lets check for Multicollinearity in the predictors:
+
+```{r}
+full.pois <- glm(TARGET ~ ., data=wine.trn.omit.na, family=poisson())
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- faraway::vif(full.pois)
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+knitr::kable(vif.df)
+
+#unique(wine.trn.omit.na$AcidIndex)
+
+```
+
+Multicollinearity noticed for AcidIndex dummy variables AcidIndex values 6, 7 , 8, 9, 10, 11, 12.
+
+Lets try consolidating those rows and retry the vif again.
+
+```{r}
+wine.trn.omit.na$AcidIndex[wine.trn.omit.na$AcidIndex %in% c(6,7,8,9,10,11,12) ]<- 5
+```
+
+```{r}
+full.pois <- glm(TARGET ~ ., data=wine.trn.omit.na, family=poisson())
+#Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+vifFit1 <- faraway::vif(full.pois)
+#sort by descending
+vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
+names(vif.df) <- c('Multicolinearity score')
+knitr::kable(vif.df)
+
+#unique(wine.trn.omit.na$AcidIndex)
+```
+
+The above variables looks good enough to proceed with model building.
+
+### Split the dataset into training and test:
+
+We will randomly split our dataset into training (80%) and test (20%).
+
+```{r echo=TRUE}
+set.seed(3) 
+s=sample(1:nrow(wine.trn.omit.na),0.80*nrow(wine.trn.omit.na)) 
+wine.training=wine.trn.omit.na[s,] 
+wine.test=wine.trn.omit.na[-s,]
+```
+
+Number of observations in *training* dataset is `r nrow(wine.training)` 
+
+Number of observations in *test* dataset is `r nrow(wine.test)`
 
 ## Build  Models
 
-### Poisson Regression Model 1
+### Poisson Model - Stepwise Backward
+
+First, Include all variables and build the model. And then use the stepwise backward. 
 
 ```{r}
+full.pois <- glm(TARGET ~ ., data=wine.training, family=poisson())
+pois.backward.step = step(full.pois , trace = FALSE) 
 
-#JUST testing. Not a good model!
-#http://www.ats.ucla.edu/stat/r/dae/poissonreg.htm
-wine.trn1$STARS <- as.factor(wine.trn1$STARS)
-pois1 <- glm(TARGET ~ STARS+LabelAppeal, family="poisson", data=wine.trn1)
-
-summary(pois1)
-
-round(predict(pois1))
+summary(pois.backward.step) 
+formula(pois.backward.step)
 ```
 
-### Poisson Regression Model 2
+### Poisson Model - Stepwise Forward
 
-### Negative Binomial Regression Model 1
+```{r}
+null.model.pois <- glm(TARGET ~ 1, data=wine.training, family=poisson())
+pois.forward.step = step(null.model.pois ,
+                         scope=list(lower=formula(null.model.pois),upper=formula(full.pois)),
+                         direction = "forward",
+                         trace = FALSE) 
 
-### Negative Binomial Regression Model 2
+summary(pois.forward.step) 
+formula(pois.forward.step)
+```
 
-### Multiple Linear Regression Model 1
+### Poisson Model - Manual
 
-### Multiple Linear Regression Model 2
+Lets include only significant predictors noticed from the data exploration section.
+
+```{r}
+full.pois.manual <- glm(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training, family=poisson())
+pois.manual = step(full.pois.manual , trace = FALSE) 
+
+summary(pois.manual) 
+formula(pois.manual)
+```
+
+
+### Negative Binomial Model - Stepwise Backward
+
+Lets now try with Negative Binomial modeling, which fits greately for over-dispersed count outcome variables.
+
+First, Include all variables and build the model. And then use the stepwise backward. 
+
+```{r}
+full.nbm <- glm.nb(TARGET ~ ., data=wine.training)
+nbm.backward.step = step(full.nbm , trace = FALSE) 
+
+summary(nbm.backward.step) 
+formula(nbm.backward.step)
+```
+
+### Negative Binomial Model - Stepwise Forward
+
+```{r}
+null.model.nbm <- glm.nb(TARGET ~ 1, data=wine.training)
+nbm.forward.step = step(null.model.nbm ,
+                         scope=list(lower=formula(null.model.nbm),upper=formula(full.nbm)),
+                         direction = "forward",
+                         trace = FALSE) 
+
+summary(nbm.forward.step) 
+formula(nbm.forward.step)
+```
+
+### Negative Binomial Model - Manual
+
+Lets include only significant predictors noticed from the data exploration section.
+
+```{r}
+full.nbm.manual <- glm.nb(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training)
+nbm.manual = step(full.nbm.manual , trace = FALSE) 
+
+summary(nbm.manual) 
+formula(nbm.manual)
+```
+
+### Linear Model - Stepwise Backward
+```{r}
+full.lm <- lm(TARGET ~ ., data=wine.training)
+lm.backward.step = step(full.lm , trace = FALSE) 
+
+summary(lm.backward.step) 
+formula(lm.backward.step)
+```
+
+
+### Linear Model - Stepwise Forward
+```{r}
+nothing.mod.lnr <- lm(TARGET ~ 1, data=wine.training)
+lm.forward.step <- step(nothing.mod.lnr, scope=list(lower=formula(nothing.mod.lnr),upper=formula(full.lm)), direction = 'forward', trace=FALSE)
+
+summary(lm.forward.step)
+formula(lm.forward.step)
+```
+
+### Linear Model - Manual
+```{r}
+full.lm.manual <- lm(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training)
+lm.manual = step(full.lm.manual , trace = FALSE) 
+
+summary(lm.manual) 
+formula(lm.manual)
+```
 
 
 ## Model Selection
+
+Lets prepare a validation results data frame by deriving the validation metrics like, RMSE, R^2 ( for linear model only) and AIC and number of coefficients etc., to help decide a better model out of the above 9 models.
+
+```{r}
+#RMSE - Root Mean Square Error ( / CrossValidation)
+rmse <- function(testDataset, model) {
+  return(round(sqrt(mean((predict(model,testDataset)-testDataset$TARGET)**2)),4))
+}
+```
+
+```{r}
+validationResults <- data.frame(ModelType=c("Poisson - Stepwise Backward",
+                                            "Poisson - Stepwise Forward",
+                                            "Poisson - Manual",
+                                            "Negative Binomial - Backward",
+                                            "Negative Binomial - Forward",
+                                            "Negative Binomial - Manual",
+                                            "Linear - Stepwise Backward",
+                                            "Linear - Stepwise Forward",
+                                            "Linear - Manual"
+                                            ),
+                                RMSE=c(rmse(wine.test, pois.backward.step),
+                                       rmse(wine.test, pois.forward.step),
+                                       rmse(wine.test, pois.manual),
+                                       rmse(wine.test, nbm.backward.step),
+                                       rmse(wine.test, nbm.forward.step),
+                                       rmse(wine.test, nbm.manual),
+                                       rmse(wine.test, lm.backward.step),
+                                       rmse(wine.test, lm.forward.step),
+                                       rmse(wine.test, lm.manual)),
+                                Adj_R2=c(NA,NA,NA,NA,NA,NA,
+                                     round(summary(lm.backward.step)$adj.r.squared,2),
+                                     round(summary(lm.forward.step)$adj.r.squared,2),
+                                     round(summary(lm.manual)$adj.r.squared,2)),
+                                AIC=c(AIC(pois.backward.step),
+                                      AIC(pois.forward.step),
+                                      AIC(pois.manual),
+                                      AIC(nbm.backward.step),
+                                      AIC(nbm.forward.step),
+                                      AIC(nbm.manual),
+                                      AIC(lm.backward.step),
+                                      AIC(lm.forward.step),
+                                      AIC(lm.manual)),
+                                Coefs=c(length(pois.backward.step$coefficients) - 1,
+                                      length(pois.forward.step$coefficients) - 1,
+                                      length(pois.manual$coefficients) - 1,
+                                      length(nbm.backward.step$coefficients) - 1,
+                                      length(nbm.forward.step$coefficients) - 1,
+                                      length(nbm.manual$coefficients) - 1,
+                                      length(lm.backward.step$coefficients) - 1,
+                                      length(lm.forward.step$coefficients) - 1,
+                                      length(lm.manual$coefficients) - 1)
+)
+
+kable(validationResults)
+```
+
+Since we are comparing different types of models, its tricky to select a common metric for these.
+
+For our evaluation, lets consider the model that had least RMSE, AIC - which in our case is the linear model ( both barkward and forward resluted in the same metrics)
+
+## Evaluation
+
+Lets do the data transformation first for our eval data frame, and then predict.
+
+```{r}
+glimpse(wine.evl)
+colnames(wine.evl)[1] <- "INDEX"
+wine.evl$Alcohol[is.na(wine.evl$Alcohol)] <- 0
+wine.evl$STARS[is.na(wine.evl$STARS)] <- 0
+
+wine.evl$STARS <- as.factor(wine.evl$STARS)
+wine.evl$AcidIndex <- as.factor(wine.evl$AcidIndex)
+wine.evl$LabelAppeal <- as.factor(wine.evl$LabelAppeal)
+
+wine.evl$LabelAppeal <- as.factor(wine.evl$LabelAppeal)
+
+wine.evl$AcidIndex[wine.evl$AcidIndex %in% c(6,7,8,9,10,11,12) ]<- 5
+
+wine.evl$TARGET <- round(predict(lm.backward.step, newdata=wine.evl, type="response"))
+
+
+kable(wine.evl[,c("INDEX", "STARS", "LabelAppeal", "TARGET")])
+
+```
+
 
 ## Appendix
 
