@@ -19,7 +19,7 @@ library(ggplot2)
 library(gridExtra)
 library(Amelia)
 library(reshape2)
- library(dummies)
+library(dummies)
  # library(car)
  # library(recommenderlab)
  # library(knitr)
@@ -42,7 +42,7 @@ wine.trn  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/mast
 wine.evl  <- read.csv("https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv", header=TRUE, sep=",", stringsAsFactors = FALSE, na.strings=c("NA", ""))
 ```
 
-```{r}
+```{r eval=FALSE}
 summary(wine.trn)
 glimpse(wine.trn)
 ```
@@ -57,7 +57,7 @@ colnames(wine.trn)[1] <- "INDEX"
 
 Eight of the variables have missing data.
 
-```{r eval=FALSE}
+```{r}
 na_count <-sapply(wine.trn, function(y) sum(length(which(is.na(y)))))
 
 na_countPrc <- round(sapply(wine.trn, function(y) sum(length(which(is.na(y))))/ length(y) *100), 2)
