@@ -192,6 +192,31 @@ wine.trn1$Alcohol[is.na(wine.trn1$Alcohol)] <- 0
 
 ## Build  Models
 
+### Poisson Regression Model 1
+
+```{r}
+
+#JUST testing. Not a good model!
+#http://www.ats.ucla.edu/stat/r/dae/poissonreg.htm
+wine.trn1$STARS <- as.factor(wine.trn1$STARS)
+pois1 <- glm(TARGET ~ STARS+LabelAppeal, family="poisson", data=wine.trn1)
+
+summary(pois1)
+
+round(predict(pois1))
+```
+
+### Poisson Regression Model 2
+
+### Negative Binomial Regression Model 1
+
+### Negative Binomial Regression Model 2
+
+### Multiple Linear Regression Model 1
+
+### Multiple Linear Regression Model 2
+
+
 ## Model Selection
 
 ## Appendix
