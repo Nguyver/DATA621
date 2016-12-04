@@ -264,12 +264,30 @@ Number of observations in *test* dataset is `r nrow(wine.test)`
 First, Include all variables and build the model. And then use the stepwise backward. 
 
 ```{r}
+#http://www.ats.ucla.edu/stat/r/dae/poissonreg.htm
+#http://www.ats.ucla.edu/stat/r/dae/nbreg.htm
+
 full.pois <- glm(TARGET ~ ., data=wine.training, family=poisson())
 pois.backward.step = step(full.pois , trace = FALSE) 
 
-summary(pois.backward.step) 
+round(summary(pois.backward.step)$coef,2)
 formula(pois.backward.step)
 ```
+
+We can notice that *STARS*, *LableAppeal*, *AcidIndex*, *VolatileAcidity* and  *TotalSulfurDioxide* are the significant variables.
+
+For example, for each one-unit increase in VolatileAcidity, the expected log count of the number of sample units sold is decreases by 0.03.
+
+The factor variable shown as STARS4 is the expected difference in log count between group 4 and the reference group zero (/NA).
+
+Lets check if there is overdispersion (c-hat, to check if mean exceeding the variance) here, (Residual Deviance)/(Residual df).
+(If c-hat is 1, then no overdispersion occur)
+
+```{r}
+#reference: http://theses.ulaval.ca/archimede/fichiers/21842/apa.html
+```
+
+c-hat for overdispersion check is `r deviance(pois.backward.step)/df.residual(pois.backward.step)`
 
 ### Poisson Model - Stepwise Forward
 
@@ -280,9 +298,13 @@ pois.forward.step = step(null.model.pois ,
                          direction = "forward",
                          trace = FALSE) 
 
-summary(pois.forward.step) 
+round(coef(summary(pois.forward.step)),2)
 formula(pois.forward.step)
 ```
+
+c-hat for overdispersion check is `r deviance(pois.forward.step)/df.residual(pois.forward.step)`
+
+We notice the very similar results here. (Similar to Stepwise Backward), Hence the same interpretation applies here.
 
 ### Poisson Model - Manual
 
@@ -292,10 +314,14 @@ Lets include only significant predictors noticed from the data exploration secti
 full.pois.manual <- glm(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training, family=poisson())
 pois.manual = step(full.pois.manual , trace = FALSE) 
 
-summary(pois.manual) 
+round(summary(pois.manual)$coef,2)
 formula(pois.manual)
 ```
 
+We only included the above significant variables we noticed from our correlation here, so this model has got 
+few co-efficients compared with the above.
+
+c-hat for overdispersion check is `r deviance(pois.manual)/df.residual(pois.manual)`
 
 ### Negative Binomial Model - Stepwise Backward
 
@@ -307,9 +333,17 @@ First, Include all variables and build the model. And then use the stepwise back
 full.nbm <- glm.nb(TARGET ~ ., data=wine.training)
 nbm.backward.step = step(full.nbm , trace = FALSE) 
 
-summary(nbm.backward.step) 
+round(summary(nbm.backward.step)$coef,2)
 formula(nbm.backward.step)
 ```
+
+We noticed that our dataset do NOT has lot of overdispersion ( based on poission model above), so the negative binomial results are
+very much close to the poission.
+
+For example, for each one-unit increase in VolatileAcidity, the expected log count of the number of sample units sold is decreases by 0.031.
+
+The factor variable shown as STARS1 is the expected difference [0.80] in log count between group 1 and the reference group zero (/NA).
+
 
 ### Negative Binomial Model - Stepwise Forward
 
@@ -320,9 +354,11 @@ nbm.forward.step = step(null.model.nbm ,
                          direction = "forward",
                          trace = FALSE) 
 
-summary(nbm.forward.step) 
+round(summary(nbm.forward.step)$coef,2)
 formula(nbm.forward.step)
 ```
+
+This provides us with the similar results as Stepwise Backward.
 
 ### Negative Binomial Model - Manual
 
@@ -332,18 +368,26 @@ Lets include only significant predictors noticed from the data exploration secti
 full.nbm.manual <- glm.nb(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training)
 nbm.manual = step(full.nbm.manual , trace = FALSE) 
 
-summary(nbm.manual) 
+round(summary(nbm.manual)$coef,2)
 formula(nbm.manual)
 ```
 
+We only included the above significant variables we noticed from our correlation here, so this model has got 
+few co-efficients compared with the above.
+
+
 ### Linear Model - Stepwise Backward
+
+ Lets now just try with multiple linear regression model, and see the outcome.
+
 ```{r}
 full.lm <- lm(TARGET ~ ., data=wine.training)
 lm.backward.step = step(full.lm , trace = FALSE) 
 
-summary(lm.backward.step) 
+round(summary(lm.backward.step)$coef,2)
 formula(lm.backward.step)
 ```
+
 
 
 ### Linear Model - Stepwise Forward
@@ -351,7 +395,7 @@ formula(lm.backward.step)
 nothing.mod.lnr <- lm(TARGET ~ 1, data=wine.training)
 lm.forward.step <- step(nothing.mod.lnr, scope=list(lower=formula(nothing.mod.lnr),upper=formula(full.lm)), direction = 'forward', trace=FALSE)
 
-summary(lm.forward.step)
+round(summary(lm.forward.step)$coef,2)
 formula(lm.forward.step)
 ```
 
@@ -360,7 +404,7 @@ formula(lm.forward.step)
 full.lm.manual <- lm(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training)
 lm.manual = step(full.lm.manual , trace = FALSE) 
 
-summary(lm.manual) 
+round(summary(lm.manual)$coef,2)
 formula(lm.manual)
 ```
 
