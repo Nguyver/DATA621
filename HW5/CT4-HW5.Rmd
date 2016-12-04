@@ -188,10 +188,20 @@ wine.trn1$Alcohol[is.na(wine.trn1$Alcohol)] <- 0
 wine.trn1$STARS[is.na(wine.trn1$STARS)] <- 0
 ```
 
+We will be modeling on 2 different dataframes. One with AcidIndex and LabelAppeal as numeric variables and the second one with factorizrd AcidIndex and LabelAppeal
+
+```{r}
+wine.trn1.numeric <- wine.trn1
+
+
+```
+
 ### Factorize
 
 ```{r}
 wine.trn1$STARS <- as.factor(wine.trn1$STARS)
+wine.trn1.numeric$STARS <- as.factor(wine.trn1.numeric$STARS)
+
 wine.trn1$AcidIndex <- as.factor(wine.trn1$AcidIndex)
 wine.trn1$LabelAppeal <- as.factor(wine.trn1$LabelAppeal)
 ```
@@ -199,6 +209,8 @@ wine.trn1$LabelAppeal <- as.factor(wine.trn1$LabelAppeal)
 lets take complete cases only, as we have got sufficient number of observations after we took care of the NAs for STARS and Alcohol variables.
 
 ```{r}
+wine.trn1.numeric.omit.na <- na.omit(wine.trn1.numeric)
+
 wine.trn.omit.na <- na.omit(wine.trn1)
 glimpse(wine.trn.omit.na)
 ```
@@ -208,12 +220,19 @@ glimpse(wine.trn.omit.na)
 Lets check for Multicollinearity in the predictors:
 
 ```{r}
+full.pois.numeric <- glm(TARGET ~ ., data=wine.trn1.numeric.omit.na, family=poisson())
+
 full.pois <- glm(TARGET ~ ., data=wine.trn.omit.na, family=poisson())
 #Lets check for Multi-Collinearity - lets find vif value and drop those that has 
+
+vifFit1.numeric <- faraway::vif(full.pois.numeric)
 vifFit1 <- faraway::vif(full.pois)
 #sort by descending
+
+vif.df.numeric <- as.data.frame(sort(vifFit1.numeric, decreasing = T))
 vif.df <- as.data.frame(sort(vifFit1, decreasing = T))
 names(vif.df) <- c('Multicolinearity score')
+knitr::kable(vif.df.numeric)
 knitr::kable(vif.df)
 
 #unique(wine.trn.omit.na$AcidIndex)
@@ -224,11 +243,15 @@ Multicollinearity noticed for AcidIndex dummy variables AcidIndex values 6, 7 , 
 
 Lets try consolidating those rows and retry the vif again.
 
+But there is no Multicollinearity noticed for any of the variables in wine.trn1.numeric.omit.na dataframe.
+There for we will keep all the variables for modelling.
+
 ```{r}
 wine.trn.omit.na$AcidIndex[wine.trn.omit.na$AcidIndex %in% c(6,7,8,9,10,11,12) ]<- 5
 ```
 
 ```{r}
+#full.pois.numeric <- glm(TARGET ~ ., data=wine.trn1.numeric.omit.na, family=poisson())
 full.pois <- glm(TARGET ~ ., data=wine.trn.omit.na, family=poisson())
 #Lets check for Multi-Collinearity - lets find vif value and drop those that has 
 vifFit1 <- faraway::vif(full.pois)
@@ -248,9 +271,15 @@ We will randomly split our dataset into training (80%) and test (20%).
 
 ```{r echo=TRUE}
 set.seed(3) 
+
+s0=sample(1:nrow(wine.trn1.numeric.omit.na),0.80*nrow(wine.trn1.numeric.omit.na)) 
+wine.training0=wine.trn1.numeric.omit.na[s0,] 
+wine.test0=wine.trn1.numeric.omit.na[-s0,]
+
 s=sample(1:nrow(wine.trn.omit.na),0.80*nrow(wine.trn.omit.na)) 
 wine.training=wine.trn.omit.na[s,] 
 wine.test=wine.trn.omit.na[-s,]
+
 ```
 
 Number of observations in *training* dataset is `r nrow(wine.training)` 
@@ -267,8 +296,17 @@ First, Include all variables and build the model. And then use the stepwise back
 #http://www.ats.ucla.edu/stat/r/dae/poissonreg.htm
 #http://www.ats.ucla.edu/stat/r/dae/nbreg.htm
 
-full.pois <- glm(TARGET ~ ., data=wine.training, family=poisson())
-pois.backward.step = step(full.pois , trace = FALSE) 
+full.pois0 <- step(glm(TARGET ~ ., data=wine.training0, family=poisson()),trace = FALSE)
+pois.backward.step <- step(glm(TARGET ~ ., data=wine.training, family=poisson()), trace = FALSE)
+
+round(summary(pois.backward.step)$coef,2)
+formula(pois.backward.step)
+
+#full.pois <- glm(TARGET ~ ., data=wine.training, family=poisson())
+#pois.backward.step = step(full.pois , trace = FALSE) 
+
+round(summary(full.pois0)$coef,2)
+formula(full.pois0)
 
 round(summary(pois.backward.step)$coef,2)
 formula(pois.backward.step)
@@ -292,6 +330,7 @@ c-hat for overdispersion check is `r deviance(pois.backward.step)/df.residual(po
 ### Poisson Model - Stepwise Forward
 
 ```{r}
+
 null.model.pois <- glm(TARGET ~ 1, data=wine.training, family=poisson())
 pois.forward.step = step(null.model.pois ,
                          scope=list(lower=formula(null.model.pois),upper=formula(full.pois)),
@@ -311,6 +350,11 @@ We notice the very similar results here. (Similar to Stepwise Backward), Hence t
 Lets include only significant predictors noticed from the data exploration section.
 
 ```{r}
+pois.manual0 <- step(glm(TARGET ~ VolatileAcidity + Chlorides + FreeSulfurDioxide + TotalSulfurDioxide + 
+    Density + Sulphates + LabelAppeal + AcidIndex + STARS, data=wine.training, family=poisson()), trace = FALSE)
+round(summary(pois.manual0)$coef,2)
+formula(pois.manual0)
+
 full.pois.manual <- glm(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training, family=poisson())
 pois.manual = step(full.pois.manual , trace = FALSE) 
 
@@ -330,9 +374,15 @@ Lets now try with Negative Binomial modeling, which fits greately for over-dispe
 First, Include all variables and build the model. And then use the stepwise backward. 
 
 ```{r}
+full.nbm0 <- step(glm.nb(TARGET ~ ., data=wine.training0),trace = FALSE)
+
 full.nbm <- glm.nb(TARGET ~ ., data=wine.training)
 nbm.backward.step = step(full.nbm , trace = FALSE) 
 
+round(summary(full.nbm0)$coef,2)
+formula(full.nbm0)
+
+AIC(full.nbm0)
 round(summary(nbm.backward.step)$coef,2)
 formula(nbm.backward.step)
 
@@ -364,8 +414,13 @@ This provides us with the similar results as Stepwise Backward.
 ### Negative Binomial Model - Manual
 
 Lets include only significant predictors noticed from the data exploration section.
-
+Since in the dataset with all numeric values Density does not seems significant, so we decide to remove it
 ```{r}
+nbm.manual0 <- step(glm.nb(TARGET ~ VolatileAcidity + Chlorides + FreeSulfurDioxide + TotalSulfurDioxide + 
+     Sulphates + LabelAppeal + AcidIndex + STARS, data=wine.training0),trace = FALSE)
+round(summary(nbm.manual0)$coef,2)
+formula(nbm.manual0)
+
 full.nbm.manual <- glm.nb(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training)
 nbm.manual = step(full.nbm.manual , trace = FALSE) 
 
@@ -382,6 +437,10 @@ few co-efficients compared with the above.
  Lets now just try with multiple linear regression model, and see the outcome.
 
 ```{r}
+full.lm0 <- step(lm(TARGET ~ ., data=wine.training0), trace = FALSE)
+round(summary(full.lm0)$coef,2)
+formula(full.lm0)
+
 full.lm <- lm(TARGET ~ ., data=wine.training)
 lm.backward.step = step(full.lm , trace = FALSE) 
 
@@ -402,6 +461,13 @@ formula(lm.forward.step)
 
 ### Linear Model - Manual
 ```{r}
+# Removed Density and Sulphates as they are not significant based on p value
+
+lm.manual0 <- step(lm(TARGET ~ VolatileAcidity + Chlorides + FreeSulfurDioxide + TotalSulfurDioxide + 
+     LabelAppeal + AcidIndex + STARS, data=wine.training0), trace = FALSE)
+round(summary(lm.manual0)$coef,2)
+formula(lm.manual0)
+
 full.lm.manual <- lm(TARGET ~ STARS +LabelAppeal +AcidIndex +VolatileAcidity, data=wine.training)
 lm.manual = step(full.lm.manual , trace = FALSE) 
 
@@ -466,6 +532,40 @@ validationResults <- data.frame(ModelType=c("Poisson - Stepwise Backward",
 )
 
 kable(validationResults)
+```
+
+```{r}
+#validationResults0 <- data.frame(ModelType=c("Poisson - Step model",
+ #                                           "Poisson - Manual",
+  #                                          "Negative Binomial - Step model",
+   #                                         "Negative Binomial - Manual",
+    #                                        "Linear - Step model",
+     #                                       "Linear - Manual"
+      #                                      ),
+       #                                 RMSE=c(rmse(wine.test0, full.pois0),
+        #                                       rmse(wine.test0, full.pois0),
+         #                                       rmse(wine.test0, full.nbm0),
+          #                                      rmse(wine.test0, nbm.manual0),
+           #                                     rmse(wine.test, full.lm0),
+            #                                    rmse(wine.test0, lm.manual0)),
+             #                   Adj_R2=c(NA,NA,NA,NA,
+              #                       round(summary(full.lm0)$adj.r.squared,2),
+               #                      round(summary(lm.manual0)$adj.r.squared,2)),
+                #                AIC=c(AIC(full.pois0),
+                 #                     AIC(pois.manual0),
+                  #                    AIC(full.nbm0),
+                   #                   AIC(nbm.manual0),
+                    #                  AIC(full.lm0),
+                     #                 AIC(lm.manual0)), 
+                      #          Coefs=c(length(full.pois0$coefficients) - 1,
+                       #               length(pois.manual0$coefficients) - 1,
+                        #              length(full.nbm0$coefficients) - 1,
+                         #             length(nbm.manual0$coefficients) - 1,
+                          #            length(full.lm0$coefficients) - 1,
+                           #           length(lm.manual0$coefficients) - 1))
+
+
+#kable(validationResults0)
 ```
 
 Since we are comparing different types of models, its tricky to select a common metric for these.
