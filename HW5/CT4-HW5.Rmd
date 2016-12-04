@@ -27,10 +27,10 @@ library(dummies)
  # library(pROC)
 ```
 
-# Overview
+## Overview
 The objective of this assignment is to predict the number of cases of wine that will be sold based on the properties of the wine. A count regression model will be used to predict wine sales.
 
-**Dataset**  
+### Dataset  
 [Wine - Training data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-training-data.csv)  
 [Wine - Evaluation Data](https://raw.githubusercontent.com/Nguyver/DATA621-HW/master/HW5/wine-evaluation-data.csv)  
 
@@ -48,10 +48,9 @@ glimpse(wine.trn)
 ```
 
 Looks like the INDEX column name need to be corrected.
-```{r}
+```{r echo=TRUE}
 colnames(wine.trn)[1] <- "INDEX"
 ```
-
 
 ### Missing Data
 
@@ -109,6 +108,21 @@ ggplot(wine.trn, aes(x = TARGET, fill = factor(STARS))) + geom_density(alpha = 0
 
 From the above diagrams, we notice that the NAs for STARS showing us a different distribution. So, we have to take care of this in the data preparation.
 
+### Negative Values
+ 
+From the summary of the data, we can see that a few variables have negative values.
+```{r}
+
+neg_cnt <-sapply(wine.trn, function(y) sum(y<0, na.rm=TRUE))
+
+neg_prc <- round(sapply(wine.trn, function(y) sum(y<0, na.rm=TRUE)/length(y) *100), 2)
+
+neg.df <- filter(data.frame(ColName =colnames(wine.trn) , Negative_Count=neg_cnt, Percent_Negative=neg_prc), neg_cnt > 0)
+
+knitr::kable(neg.df)
+
+```
+
 ### Data Distributions
 
 Lets check the overall distribution of the TAGET variable ( which is a *count variable* indicating the number of sample cases):
@@ -158,6 +172,7 @@ chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
 
 The above indicates the *STARS* and *LabelAppeal* are significant variables from correlation perspective.
 
+### Correlations
 
 ## Data Preparation
 
