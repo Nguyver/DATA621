@@ -94,9 +94,8 @@ ggplot_missing <- function(x){
 
 
 ```{r}
-#ggplot_missing(wine.trn)
+ggplot_missing(wine.trn)
 ```
-![](Missing_Map.png)
 
 Though there are lot of missing values, we could not see a definite pattern here, but we difinitely notice that there are highest number of missing values for *STARS* variable.
 
@@ -677,7 +676,19 @@ We notice underdispersion here (with both linear as well as poisson models appli
 
 
 ```{r}
-kable(wine.evl[,c("INDEX", "STARS", "LabelAppeal", "TARGET")])
+wine.evl.short <- wine.evl[,c("INDEX", "STARS", "LabelAppeal", "TARGET")]
+names(wine.evl.short) <- c("IDX", "STRS", "LBL","TGT")
+
+wine.evl.short.1 <- wine.evl.short[1:ceiling(nrow(wine.evl.short)/3),]
+wine.evl.short.2 <- wine.evl.short[(ceiling(nrow(wine.evl.short)/3)+1):(ceiling(nrow(wine.evl.short)/3)*2),]
+wine.evl.short.3 <- wine.evl.short[((ceiling(nrow(wine.evl.short)/3)*2)+1):nrow(wine.evl.short),]
+
+wine.evl.short.3 <- rbind(wine.evl.short.3,c(NA,NA,NA,NA))
+
+wine.evl.split <- cbind(wine.evl.short.1,wine.evl.short.2,wine.evl.short.3)
+
+
+kable(wine.evl.split, caption="Predictions")
 ```
 
 ## Appendix
@@ -1008,6 +1019,17 @@ ggplot(wine.evl.omit.na, aes(x=TARGET)) + geom_histogram(binwidth = 0.5)+ theme(
 mn <- mean(wine.evl.omit.na$TARGET)
 vr <- var(wine.evl.omit.na$TARGET)
 
-kable(wine.evl[,c("INDEX", "STARS", "LabelAppeal", "TARGET")])
+wine.evl.short <- wine.evl[,c("INDEX", "STARS", "LabelAppeal", "TARGET")]
+names(wine.evl.short) <- c("IDX", "STRS", "LBL","TGT")
+
+wine.evl.short.1 <- wine.evl.short[1:ceiling(nrow(wine.evl.short)/3),]
+wine.evl.short.2 <- wine.evl.short[(ceiling(nrow(wine.evl.short)/3)+1):(ceiling(nrow(wine.evl.short)/3)*2),]
+wine.evl.short.3 <- wine.evl.short[((ceiling(nrow(wine.evl.short)/3)*2)+1):nrow(wine.evl.short),]
+
+wine.evl.short.3 <- rbind(wine.evl.short.3,c(NA,NA,NA,NA))
+
+wine.evl.split <- cbind(wine.evl.short.1,wine.evl.short.2,wine.evl.short.3)
+
+kable(wine.evl.split, caption="Predictions")
 ```
 
