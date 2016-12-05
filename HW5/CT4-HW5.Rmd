@@ -94,8 +94,9 @@ ggplot_missing <- function(x){
 
 
 ```{r}
-ggplot_missing(wine.trn)
+#ggplot_missing(wine.trn)
 ```
+![](Missing_Map.png)
 
 Though there are lot of missing values, we could not see a definite pattern here, but we difinitely notice that there are highest number of missing values for *STARS* variable.
 
