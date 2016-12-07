@@ -9,22 +9,42 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Work Plan Overview
+This project will be split into 2 main parts.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+- Energy Generation
+- Energy Consumption
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Energy Generation
 
-```{r cars}
-summary(cars)
-```
+### Data Collection/Preperation 
 
-## Including Plots
+- Find Dataset to help us estimate/model usable daylight for a specific location
+- Find weather dataset to predict cloudiness or precipitation
+- Find information regaurding how much power is generated with a PV system. i.e. a 4kw sytem needs 5 panels or 30 square feet of panels.
 
-You can also embed plots, for example:
+### Simulation
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+- Simulate passage of time (Day to night)
+- Simulate weather pattern (Rain, snow, sunny)
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Energy Consumption
+
+### Data Collection/Preparation
+
+- What is average family size (adults and children)
+- Family composition. Is the house empty during work hours? 
+- What is the roof size and how much panels can it hold
+- Typical household electricity usage.
+- Typical electrical appliance usage in the house
+  - Number of TVs, Refridgerator 
+  - Number of light bulbs and how long they are in use
+  - Router/Modem
+  - etc
+  
+### Simulation
+
+- Animation of appliance (in use or not)
+- Animation of family (home or not)
+- 3D Animation/modeling
