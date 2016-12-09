@@ -1,0 +1,279 @@
+---
+title: "Credict Risk Analysis - LendingClub Loan data "
+shorttitle: "Predictive Modeling with Logistic Regression "
+author: 
+  - name: Sreejaya
+    affiliation: "1"
+    address: New York, NY
+  - name: Vuthy
+    affiliation: "1"
+  - name: Suman
+    affiliation: "1"
+affiliation:
+  - id: 1
+    institution: City University of New York (CUNY)
+
+
+abstract: |
+  LendingClub is an online lending platform for loans.Borrowers apply for a loan online, and if accepted, the loan gets listed in the marketplace. As an investor/lender, you can browse the loans in the marketplace, and choose to invest in individual loans at your discretion - basically purchase *notes* backed by payments based on loans. In this project, we will attempt to analyse and predict the if a loan is risky loan or not so that we can avoid investment in high-risk notes.
+  
+author_note: |  
+  test note......
+
+keywords: "delinquent, dti (debt-to-income ratio), credit utilization ratio, mortgage accounts, open credit lines"
+
+class: man
+lang: english
+figsintext: yes
+figurelist: no
+tablelist: no
+lineno: no
+linkcolor: blue
+
+
+bibliography:
+  - "references.bib"
+  
+output: papaja::apa6_pdf
+---
+
+
+```{r setup, include=FALSE}
+
+# PER PROF.B, THE REPORT NEEDS TO BE IN 'ACADEMIC APA STYLE' REPORT #
+
+# ***** NOTE: MAKE SURE YOU HAVE MIKTEX  - https://miktex.org/howto/install-miktex *****
+# **** THEN INSTALL BELOW **** #
+#devtools::install_github("crsh/papaja", force = TRUE)
+
+## Review here for example APA style document samples:
+#https://github.com/crsh/papaja/blob/master/example/example.Rmd
+#https://raw.githubusercontent.com/crsh/papaja/master/example/example.Rmd
+
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+options(scipen=999)
+```
+
+```{r, results='hide'}
+
+if (!require("devtools",character.only = TRUE)) (install.packages("devtools",dep=TRUE))
+if (!require("yaml",character.only = TRUE)) (install.packages("yaml",dep=TRUE))
+if (!require("rprojroot",character.only = TRUE)) (install.packages("rprojroot",dep=TRUE))
+if (!require("papaja",character.only = TRUE)) (install.packages("papaja",dep=TRUE))
+if (!require("ggplot2",character.only = TRUE)) (install.packages("ggplot2",dep=TRUE))
+```
+
+```{r , load libraries}
+library(devtools)
+library(yaml)
+library(papaja)
+library(rprojroot)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(car)
+library(dplyr)
+library(reshape2)
+library(PerformanceAnalytics)
+```
+
+
+# Introduction
+
+  LendingClub's peer to peer model can not only yeild better interest rates over the traditional banking counterparts, treasury bonds and other such financial instruments, it also has advantages like lower overhead costs, lower cost of capital etc. Based on each loan application and credit report, every loan is assigned a grade ranging from A to G, and sub-grade 1 to 5,  with a corresponding interest rate. The higher the interest rate, the riskier the grade.
+
+  The LendingClub's datasets contains comprehensive list of features ( about 115), we will shortlist few features to employ to train our model for predictions. We will build different models, and test those against the validation dataset and select a better performing model.
+
+
+# Literature Review
+
+We have reviewed few of the previous projects/analysis/kaggle competitions done in this area [@Kaggle] [@Jitendra] [@Junjie] [@Shunpo]. Majority of these were applying machine learning to improve the loan default prediction. Some of these determined that Random Forest appeared to be better performing, and others logistic regression would be better. However, real-world records often behave differently from curated data in competetions like kaggle, so, we will try to apply different regression techniques including the logistic regression, naive bayes, and random forest on the real loan data during the years 2012-13 to continue search for a better predictive model. We will also include additional features like dti, credit utilization etc. from the LendingClub dataset, to see if they influence our target (credit risk) variable.
+
+
+# Methodology 
+
+## Data Exploration 
+The dataset we used for this analysis is from publicly available data from LendingClub.com, which is basically an online market place that connects borrowers and investors. As part of the data exploration, we will perform *Exploratory data analysis* to better understand the relationships in the given data including correlations, feature distributions and basic summary statistics. We will also identify the outliers, missing data and any look for invalid data.
+
+
+## Data Preparation 
+As part of the data preparation, we will try to fix the data issues we noticed in our exploratory analysis, which involves treating the outliers, missing data, invalid data etc. We will also identify the data classifications, and create dummy variables wherver required, and will convert the categorical data to numeric data which would help us later in model building.
+
+
+## Model Development 
+Our primary objective here is to *identify risky loans*, which is binary outcome, so we will be using *logistics regression, naive bayes, and random forest* modeling techniques to examine and predict the credit risk using a training subset (80%) of the original full data. 
+
+## Model Validation 
+A validation subset (20%) was used to test how well our candidate models predit the target variable. AUC and the model Accuracy will be used to select a better predicting model.
+
+\newpage
+
+# Experimentation and Results 
+
+## Data Exploration and Preparation 
+
+```{r loadData}
+#If file not found, then Load the file directly from lendingclub, unzip.
+filename <- 'LoanStats3b.csv'
+if(!file.exists(filename)){
+  url <- 'https://resources.lendingclub.com/LoanStats3b.csv.zip'
+  download.file(url,destfile="LendingClubLoans2012-13.csv.zip")
+  unzip('LendingClubLoans2012-13.csv.zip', overwrite = TRUE)
+
+}
+
+#for practice only loading 10K rows
+loans <- read.csv(filename, nrows = 10000, skip = 1, header=TRUE)
+
+#glimpse(loans)
+#summary(loans)
+```
+
+### Feature Selection:
+
+There are 111 fields and 188K observations. However, not all fields are intuitively useful for our model building, such as the loan ID, member ID, last payment month etc., so we will be removing such fields. We will also be removing features with majority of NAs ( 80% NAs). In order to label the dataset, we will classify the loans that defaulted, charged off, or were late on payments as negative cases, and those that were fully paid or current was classified as positive loans.
+
+```{r}
+#1. find the fields with majority of NA
+#get rid of fields that are mainly NA
+majority_na <- sapply(loans, function(x) {
+    coverage <- 1 - sum(is.na(x)) / length(x)
+    coverage < 0.80
+})
+
+loans <- loans[, majority_na==FALSE]
+```
+
+```{r}
+#2. Just capture the important features
+shortlisted.var = c('loan_amnt', 'term', 'int_rate', 'grade', 'sub_grade', 'emp_title','emp_length', 'home_ownership',	'annual_inc',	'verification_status', 'issue_d', 'loan_status', 
+'purpose', 'addr_state', 'dti', 'earliest_cr_line', 'open_acc', 'total_acc', 'total_pymnt',
+'total_rec_prncp', 'total_rec_int', 'open_il_6m', 'open_il_12m', 'open_il_24m', 'mths_since_rcnt_il',
+'total_bal_il', 'il_util', 'all_util', 'total_rev_hi_lim', 'mort_acc',	'mths_since_recent_bc', 
+'mths_since_recent_bc_dlq', 'num_actv_bc_tl', 'num_op_rev_tl', 'tot_hi_cred_lim', 'total_bal_ex_mort',
+'total_bc_limit') 
+
+loans.ss <- loans %>% select(which(names(loans) %in% shortlisted.var))
+#glimpse(loans.ss)
+```
+
+### Outliers:
+
+Look for outliers, and remove outliers that might affect the model. 
+
+```{r}
+#3. Looks for outliers.
+
+#income
+g.income <- ggplot(loans.ss, aes(x="annual_inc", y=annual_inc)) + geom_boxplot()
+
+loans.ss <- loans.ss[which(loans.ss$annual_inc < 250000), ]
+
+#loan amount , looks like this is not bad.
+g.loanAmt <- ggplot(loans.ss, aes(x="loan_amnt", y=loan_amnt)) + geom_boxplot()
+
+grid.arrange(g.income,  g.loanAmt, nrow=1, top = "Outliers")
+
+#what else?
+```
+
+### Tidy Data:
+
+Convert the date fields like issue date to proper date type, and remove % sign for interest rates and convert those into numeric values.
+
+```{r}
+#set up the issue date and the earliest credit line to Date types
+loans.ss$IssueDate <- as.Date(paste(paste('01', substr(loans.ss$issue_d, 1, 3), sep=''), substr(loans.ss$issue_d, 5, 9), sep=''), '%d%B%Y')
+
+loans.ss$FirstCreditDate <- as.Date(paste(paste('01', substr(loans.ss$earliest_cr_line, 1, 3), sep=''),
+                                          substr(loans.ss$earliest_cr_line, 5, 9), sep=''), '%d%B%Y')
+
+loans.ss$credit.length <- as.numeric((loans.ss$IssueDate - loans.ss$FirstCreditDate) / 365.0)
+
+loans.ss$FirstCreditDate <- NULL
+loans.ss$IssueDate <- NULL
+loans.ss$earliest_cr_line <- NULL
+
+#the int_rate variable is a factor with a percentage sign, so we need to derivce a numeric
+loans.ss$int_rate <- (as.numeric(gsub("%", "", loans.ss$int_rate)))
+
+# Remove column with xx month to numeric variables
+loans.ss$dti <- (as.numeric(gsub("%", "", loans.ss$dti)))
+
+```
+
+### Factorize:
+
+Factorize the loan status levels with proper ordering.
+
+```{r}
+#Set the proper order for the loan_status factor
+loans.ss$loan_status <- factor(loans.ss$loan_status, levels = c('Charged Off', 'Default', 'Late (31-120 days)', 'Late (16-30 days)', 'In Grace Period', 'Current', 'Fully Paid'))
+```
+Lets create a label *bad.loan* which indicates a loan is bad if it is delinquent, or late consider as negative, otherwise positive. 
+
+```{r}
+neg_ind <- c("Default","Late (31-120 days) Charged Off","Late (16-30 days)", "Charged Off")
+loans.ss <- loans.ss %>% mutate(bad.loan = ifelse(loan_status %in% neg_ind, 1, ifelse(loan_status == "", NA, 0)))
+```
+
+
+### Shortlist Numeric variables: 
+
+Identify the numeric variable, and compare how those distributions plot against the good, bad label, and pick a few variables with differences in the bad and good populations.[@yhat]
+
+```{r}
+#figure out which columns are numeirc (and hence we can look at the distribution)
+numeric_cols <- sapply(loans.ss, is.numeric)
+
+#plot the distribution for bads and goods for each variable
+loans.long <- melt(loans.ss[,numeric_cols], id="bad.loan")
+
+p <- ggplot(aes(x=value, group=bad.loan, colour=factor(bad.loan)), data=loans.long)
+
+#relationship of variables with good/bad label.
+p + geom_density() +  facet_wrap(~variable, scales="free")
+```
+
+```{r}
+remove.numeric.vars <- c('open_acc','total_acc','total_rec_int','total_rev_hi_lim','mths_since_recent_bc',
+'num_op_rev_tl','tot_hi_cred_lim','total_bal_ex_mort','total_bc_limit','credit.length','CreditLength')
+
+loans.ss <- loans.ss %>% select((which(!(names(loans.ss) %in% remove.numeric.vars))))
+#glimpse(loans.ss)
+```
+
+\newpage
+
+Lets visualize the correlation graph of these numeric variable:
+
+```{r, warning=FALSE}
+numeric_cols <- sapply(loans.ss, is.numeric)
+cor.matrix <- cor(loans.ss[,numeric_cols], use= "complete.obs")
+chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
+```
+
+### Dummy variables: 
+
+Identify the categorical variables,and prepare dummy variables.
+
+
+
+## Model Development 
+
+## Model Validation 
+
+
+\newpage
+
+# Conclusion 
+*conclude your findings, limitations, and suggest areas for future work. *
+
+
+# References
+
+<!-- These lines ensure references are set with hanging indents in PDF documents; they are ignored in Word. -->
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
