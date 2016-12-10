@@ -76,6 +76,7 @@ library(car)
 library(dplyr)
 library(reshape2)
 library(PerformanceAnalytics)
+library(lubridate)
 ```
 
 
@@ -155,7 +156,6 @@ shortlisted.var = c('loan_amnt', 'term', 'int_rate', 'grade', 'sub_grade', 'emp_
 'total_bc_limit') 
 
 loans.ss <- loans %>% select(which(names(loans) %in% shortlisted.var))
-#glimpse(loans.ss)
 ```
 
 ### Outliers:
@@ -215,9 +215,9 @@ loans.paidLateDelinqCurrent <- NULL
 
 ### Tidy Data:
 
-Convert the date fields like issue date to proper date type, and remove % sign for interest rates and convert those into numeric values.
+Convert the date fields like issue date to proper date type, and remove % sign for interest rates, dti and convert those into numeric values.And consider matured loans only. [ issue date + term months < today ], and remove variables where more than 20% of the observations are missing values.
 
-```{r}
+```{r, warning=FALSE}
 #set up the issue date and the earliest credit line to Date types
 loans.ss$IssueDate <- as.Date(paste(paste('01', substr(loans.ss$issue_d, 1, 3), sep=''), substr(loans.ss$issue_d, 5, 9), sep=''), '%d%B%Y')
 
@@ -226,22 +226,54 @@ loans.ss$FirstCreditDate <- as.Date(paste(paste('01', substr(loans.ss$earliest_c
 
 loans.ss$credit.length <- as.numeric((loans.ss$IssueDate - loans.ss$FirstCreditDate) / 365.0)
 
-loans.ss$FirstCreditDate <- NULL
-loans.ss$IssueDate <- NULL
-loans.ss$earliest_cr_line <- NULL
 
 # Remove column with xx month to numeric variables
 loans.ss$dti <- (as.numeric(gsub("%", "", loans.ss$dti)))
 
+#Employment Length
+loans.ss$emp_length <- gsub(" years" , "", loans.ss$emp_length)
+loans.ss$emp_length <- gsub(" year" , "", loans.ss$emp_length)
+loans.ss$emp_length <- ifelse(loans.ss$emp_length == "10+", 10, loans.ss$emp_length)
+loans.ss$emp_length <- ifelse(loans.ss$emp_length == "< 1", 0.5, loans.ss$emp_length)
+loans.ss$emp_length <- suppressWarnings(as.numeric(loans.ss$emp_length))
+
+# Convert character to ordinal variable
+loans.ss$grade[loans.ss$grade == ""] <- NA
+loans.ss$grade <- ordered(loans.ss$grade)
+
+# Identify loans that have already come to term
+loans.ss <- loans.ss %>% mutate(term.months = as.numeric(ifelse(term == " 36 months", 36, 60))) %>% select(-term)
+
+
+loans.ss$maturity.date <- loans.ss$IssueDate + months(loans.ss$term.months)
+today <- Sys.Date()
+loans.ss$mature <- ifelse(loans.ss$maturity.date < today, 1, 0)
+loans.ss$maturity.date <- NULL
+remove(today)
+
+# subset data to select only mature loans
+loans.ss <- subset(loans.ss, mature==1)
+
+# Remove variables where more than 20% of the observations are missing values
+loans.ss <- loans.ss[, colMeans(is.na(loans.ss)) <= .20]
+
+loans.ss$FirstCreditDate <- NULL
+loans.ss$IssueDate <- NULL
+loans.ss$earliest_cr_line <- NULL
 ```
 
-### Factorize:
 
 Factorize the loan status levels with proper ordering.
 
 ```{r}
 #Set the proper order for the loan_status factor
 loans.ss$loan_status <- factor(loans.ss$loan_status, levels = c('Charged Off', 'Default', 'Late (31-120 days)', 'Late (16-30 days)', 'In Grace Period', 'Current', 'Fully Paid'))
+
+
+# Remove variables where all values are the same
+loans.ss <- loans.ss[sapply(loans.ss, function(x) length(levels(factor(x)))>1)]
+
+
 ```
 Lets create a label *bad.loan* which indicates a loan is bad if it is delinquent, or late consider as negative, otherwise positive. 
 
@@ -294,11 +326,23 @@ From our numerical feature list, it appears like the *total_pymnt*, and *total_r
 Since R's glm function will take care of the dummy variables (?), we just need to make sure that the categorical variables are factorized, and remove other unnecessary variables.
 
 ```{r}
+# Remove variables that provide additional outcome data about the loan
 loans.ss$emp_title <- NULL
-loans.ss$emp_length <- NULL
-loans.ss.issue_d <- NULL
-loans.ss.addr_state <- NULL
-loans.ss.paidLateDelinqCurrent <- NULL
+loans.ss$issue_d <- NULL
+loans.ss$addr_state <- NULL
+loans.ss$paidLateDelinqCurrent <- NULL
+loans.ss$sub_grade <- NULL
+loans.ss$loan_status <- NULL
+loans.ss$purpose <- NULL
+
+# Remove factor vars with too many levels
+too.many.levels <- function(x) {
+ is.factor(x) == TRUE & length(levels(x)) > 32
+}
+delete <- lapply(loans.ss, too.many.levels)
+loan <- loans.ss[, delete == FALSE]
+remove(too.many.levels, delete)
+
 ```
 
 ### Split the dataset into training and test:
@@ -317,6 +361,11 @@ loans.ss.test=loans.ss[-s0,]
 \newpage
 
 ## Model Development 
+
+```{r, warning=FALSE}
+fit <- glm(bad.loan ~ . , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
+```
+
 
 
 ## Model Validation 
