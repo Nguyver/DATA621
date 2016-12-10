@@ -178,6 +178,41 @@ grid.arrange(g.income,  g.loanAmt, nrow=1, top = "Outliers")
 #what else?
 ```
 
+
+### Visualize:
+
+```{r}
+
+#the int_rate variable is a factor with a percentage sign, so we need to derivce a numeric
+loans.ss$int_rate <- (as.numeric(gsub("%", "", loans.ss$int_rate)))
+
+g1 <- ggplot(loans.ss, aes(loan_amnt, col = grade)) + geom_histogram(bins = 50) + facet_grid(grade ~ .)
+
+g2<- ggplot(loans.ss, aes(int_rate, fill = grade)) + geom_density() + facet_grid(grade ~ .)
+
+#grid.arrange(g1,  g2, nrow=1, top = "Loan Grades 'Vs' Loan Amt, Int Rate")
+
+g3 <- ggplot(loans.ss, aes(loan_status, loan_amnt, fill = loan_status)) + geom_boxplot() + scale_x_discrete(breaks=NULL) + ggtitle("Distribution of loans by status")
+
+loans.ss$paidLateDelinqCurrent <- "Current"
+loans.ss$paidLateDelinqCurrent[which(loans.ss$loan_status == "Fully Paid")] <- "Paid"
+loans.ss$paidLateDelinqCurrent[which(loans.ss$loan_status == "Charged Off" |
+                                       loans.ss$loan_status == "Default" )] <- "Delinq"
+loans.ss$paidLateDelinqCurrent[which(loans.ss$loan_status == "Late (16-30 days)" |
+                         loans.ss$loan_status == "Late (31-120 days)")] <- "Late"
+
+loans.ss$paidLateDelinqCurrent <- factor(loans.ss$paidLateDelinqCurrent)
+
+#g1 <- ggplot(loans.ss, aes(paidLateDelinqCurrent, loan_amnt, fill = #paidLateDelinqCurrent)) + geom_bar(stat = "identity") + theme(legend.position="none")
+
+loan_by_grade <- aggregate(loan_amnt ~ grade + paidLateDelinqCurrent, data = loans.ss, sum)
+gbar <- ggplot(loan_by_grade, aes(grade, loan_amnt, fill = paidLateDelinqCurrent)) 
+g4 <- gbar + geom_bar(stat = "identity") + theme(axis.text.x=element_text(size=7)) 
+
+grid.arrange(g1,  g2, g3, g4, nrow=2)
+loans.paidLateDelinqCurrent <- NULL
+```
+
 ### Tidy Data:
 
 Convert the date fields like issue date to proper date type, and remove % sign for interest rates and convert those into numeric values.
@@ -194,9 +229,6 @@ loans.ss$credit.length <- as.numeric((loans.ss$IssueDate - loans.ss$FirstCreditD
 loans.ss$FirstCreditDate <- NULL
 loans.ss$IssueDate <- NULL
 loans.ss$earliest_cr_line <- NULL
-
-#the int_rate variable is a factor with a percentage sign, so we need to derivce a numeric
-loans.ss$int_rate <- (as.numeric(gsub("%", "", loans.ss$int_rate)))
 
 # Remove column with xx month to numeric variables
 loans.ss$dti <- (as.numeric(gsub("%", "", loans.ss$dti)))
@@ -218,7 +250,6 @@ neg_ind <- c("Default","Late (31-120 days) Charged Off","Late (16-30 days)", "Ch
 loans.ss <- loans.ss %>% mutate(bad.loan = ifelse(loan_status %in% neg_ind, 1, ifelse(loan_status == "", NA, 0)))
 ```
 
-
 ### Shortlist Numeric variables: 
 
 Identify the numeric variable, and compare how those distributions plot against the good, bad label, and pick a few variables with differences in the bad and good populations.[@yhat]
@@ -233,7 +264,8 @@ loans.long <- melt(loans.ss[,numeric_cols], id="bad.loan")
 p <- ggplot(aes(x=value, group=bad.loan, colour=factor(bad.loan)), data=loans.long)
 
 #relationship of variables with good/bad label.
-p + geom_density() +  facet_wrap(~variable, scales="free")
+#since we do not have enough space , we are not showing this.
+g <- p + geom_density() +  facet_wrap(~variable, scales="free")
 ```
 
 ```{r}
@@ -244,7 +276,6 @@ loans.ss <- loans.ss %>% select((which(!(names(loans.ss) %in% remove.numeric.var
 #glimpse(loans.ss)
 ```
 
-\newpage
 
 Lets visualize the correlation graph of these numeric variable:
 
@@ -254,15 +285,42 @@ cor.matrix <- cor(loans.ss[,numeric_cols], use= "complete.obs")
 chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
 ```
 
+From our numerical feature list, it appears like the *total_pymnt*, and *total_rec_prncp* are having high correlation with the *bad_loan* classification.
+
+\newpage
+
 ### Dummy variables: 
 
-Identify the categorical variables,and prepare dummy variables.
+Since R's glm function will take care of the dummy variables (?), we just need to make sure that the categorical variables are factorized, and remove other unnecessary variables.
 
+```{r}
+loans.ss$emp_title <- NULL
+loans.ss$emp_length <- NULL
+loans.ss.issue_d <- NULL
+loans.ss.addr_state <- NULL
+loans.ss.paidLateDelinqCurrent <- NULL
+```
 
+### Split the dataset into training and test:
+
+We will randomly split our dataset into training (80%) and test (20%).
+
+```{r}
+set.seed(5) 
+
+s0=sample(1:nrow(loans.ss),0.80*nrow(loans.ss)) 
+loans.ss.train=loans.ss[s0,] 
+loans.ss.test=loans.ss[-s0,]
+
+```
+
+\newpage
 
 ## Model Development 
 
+
 ## Model Validation 
+
 
 
 \newpage
