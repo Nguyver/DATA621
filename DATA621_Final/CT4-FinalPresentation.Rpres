@@ -18,7 +18,7 @@ Agenda
 -	Data Exploration
 - Data Preparation
 -	Model Building
-- Modle Validation
+- Model Validation
 -	Results
 - Future work
 

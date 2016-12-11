@@ -1,6 +1,6 @@
 ---
 title: "Credit Risk Analysis - LendingClub Loan data "
-shorttitle: "Logistic Regression and Random Forest"
+shorttitle: "Loan Risk Classification"
 author: 
   - name: Sreejaya
     affiliation: "1"
@@ -136,7 +136,7 @@ if(!file.exists(filename)){
 #for practice only loading 10K rows
 loans <- read.csv(filename, skip = 1, header=TRUE)
 
-glimpse(loans)
+#glimpse(loans)
 #summary(loans)
 ```
 
@@ -392,7 +392,7 @@ Number of observations in *test* dataset is `r nrow(loans.ss.test)`
 ```{r model1, tab.cap="Multicollinearity - VIFs"}
 logit.fit.1 <- glm(bad.loan ~ . , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
 
-kable(tidy(round(summary(logit.fit.1)$coef,4)))
+#kable(tidy(round(summary(logit.fit.1)$coef,4)))
 
 #Lets check the Multicollinearity
 vif.logit.fit1 <- vif(logit.fit.1)
