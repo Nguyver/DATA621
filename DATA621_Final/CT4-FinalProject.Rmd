@@ -1,0 +1,580 @@
+---
+title: "Credict Risk Analysis - LendingClub Loan data "
+shorttitle: "Logistic Regression and Random Forest"
+author: 
+  - name: Sreejaya
+    affiliation: "1"
+    address: New York, NY
+  - name: Vuthy
+    affiliation: "1"
+  - name: Suman
+    affiliation: "1"
+affiliation:
+  - id: 1
+    institution: City University of New York (CUNY)
+
+
+abstract: |
+  LendingClub is an online lending platform for loans.Borrowers apply for a loan online, and if accepted, the loan gets listed in the marketplace. As an investor/lender, you can browse the loans in the marketplace, and choose to invest in individual loans at your discretion - basically purchase *notes* backed by payments based on loans. In this project, we will attempt to analyse and predict the if a loan is risky loan or not so that we can avoid investment in high-risk notes.
+  
+author_note: |
+ This report is submitted as part of the course project for 'DATA621 - Business Analytics and Data Mining' at CUNY SPS.
+
+keywords: "delinquent, dti (debt-to-income ratio), credit utilization ratio, mortgage accounts, open credit lines"
+
+class: man
+lang: english
+figsintext: yes
+figurelist: no
+tablelist: no
+lineno: no
+linkcolor: blue
+
+
+bibliography:
+  - "references.bib"
+  
+output: papaja::apa6_pdf
+---
+
+
+```{r setup, include=FALSE}
+# PER PROF.B, THE REPORT NEEDS TO BE IN 'ACADEMIC APA STYLE' REPORT #
+
+# ***** NOTE: MAKE SURE YOU HAVE MIKTEX  - https://miktex.org/howto/install-miktex *****
+# **** THEN INSTALL BELOW **** #
+#devtools::install_github("crsh/papaja", force = TRUE)
+
+## Review here for example APA style document samples:
+#https://github.com/crsh/papaja/blob/master/example/example.Rmd
+#https://raw.githubusercontent.com/crsh/papaja/master/example/example.Rmd
+
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+options(scipen=999)
+```
+
+```{r, results='hide'}
+
+if (!require("devtools",character.only = TRUE)) (install.packages("devtools",dep=TRUE))
+if (!require("yaml",character.only = TRUE)) (install.packages("yaml",dep=TRUE))
+if (!require("rprojroot",character.only = TRUE)) (install.packages("rprojroot",dep=TRUE))
+if (!require("papaja",character.only = TRUE)) (install.packages("papaja",dep=TRUE))
+if (!require("ggplot2",character.only = TRUE)) (install.packages("ggplot2",dep=TRUE))
+if (!require("randomForest",character.only = TRUE)) (install.packages("randomForest",dep=TRUE))
+if (!require("broom",character.only = TRUE)) (install.packages("broom",dep=TRUE))
+if (!require("ROCR",character.only = TRUE)) (install.packages("ROCR",dep=TRUE))
+
+```
+
+```{r , load libraries}
+library(devtools)
+library(yaml)
+library(papaja)
+library(rprojroot)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(car)
+library(dplyr)
+library(reshape2)
+library(PerformanceAnalytics)
+library(lubridate)
+library(randomForest)
+library(broom)
+library(BMA)
+library(caret)
+library(pROC)
+library(ROCR)
+```
+
+
+# Introduction
+
+  LendingClub's peer to peer model can not only yeild better interest rates over the traditional banking counterparts, treasury bonds and other such financial instruments, it also has advantages like lower overhead costs, lower cost of capital etc. Based on each loan application and credit report, every loan is assigned a grade ranging from A to G, and sub-grade 1 to 5,  with a corresponding interest rate. The higher the interest rate, the riskier the grade.
+
+  The LendingClub's datasets contains comprehensive list of features ( about 115), we will shortlist few features to employ to train our model for predictions. We will build different models, and test those against the validation dataset and select a better performing model.
+
+
+# Literature Review
+
+We have reviewed few of the previous projects/analysis/kaggle competitions done in this area [@Kaggle] [@Jitendra] [@Junjie] [@Shunpo]. Majority of these were applying machine learning to improve the loan default prediction. Some of these determined that Random Forest appeared to be better performing, and others logistic regression would be better. However, real-world records often behave differently from curated data in competetions like kaggle, so, we will try to apply different regression techniques including the logistic regression, random forest on the real loan data during the years 2012-13 to continue search for a better predictive model. We will also include additional features like dti, credit utilization etc. from the LendingClub dataset, to see if they influence our target (credit risk) variable.
+
+
+# Methodology 
+
+## Data Exploration 
+The dataset we used for this analysis is from publicly available data from LendingClub.com, which is basically an online market place that connects borrowers and investors. As part of the data exploration, we will perform *Exploratory data analysis* to better understand the relationships in the given data including correlations, feature distributions and basic summary statistics. We will also identify the outliers, missing data and any look for invalid data.
+
+
+## Data Preparation 
+As part of the data preparation, we will try to fix the data issues we noticed in our exploratory analysis, which involves treating the outliers, missing data, invalid data etc. We will also identify the data classifications, and create dummy variables wherver required, and will convert the categorical data to numeric data which would help us later in model building.
+
+
+## Model Development 
+Our primary objective here is to *identify risky loans*, which is binary outcome, so we will be using *logistics regression, naive bayes, and random forest* modeling techniques to examine and predict the credit risk using a training subset (80%) of the original full data. 
+
+## Model Validation 
+A validation subset (20%) was used to test how well our candidate models predit the target variable. AUC and the model Accuracy will be used to select a better predicting model.
+
+\newpage
+
+# Experimentation and Results 
+
+## Data Exploration and Preparation 
+
+```{r loadData}
+#If file not found, then Load the file directly from lendingclub, unzip.
+filename <- 'LoanStats3b.csv'
+if(!file.exists(filename)){
+  url <- 'https://resources.lendingclub.com/LoanStats3b.csv.zip'
+  download.file(url,destfile="LendingClubLoans2012-13.csv.zip")
+  unzip('LendingClubLoans2012-13.csv.zip', overwrite = TRUE)
+
+}
+
+#for practice only loading 10K rows
+loans <- read.csv(filename, skip = 1, header=TRUE)
+
+#glimpse(loans)
+#summary(loans)
+```
+
+### Feature Selection:
+
+There are 111 fields and 188K observations. However, not all fields are intuitively useful for our model building, such as the loan ID, member ID, last payment month etc., so we will be removing such fields. We will also be removing features with majority of NAs ( 80% NAs). In order to label the dataset, we will classify the loans that defaulted, charged off, or were late on payments as negative cases, and those that were fully paid or current was classified as positive loans.
+
+```{r}
+#1. find the fields with majority of NA
+#get rid of fields that are mainly NA
+majority_na <- sapply(loans, function(x) {
+    coverage <- 1 - sum(is.na(x)) / length(x)
+    coverage < 0.80
+})
+
+loans <- loans[, majority_na==FALSE]
+```
+
+```{r}
+#2. Just capture the important features
+shortlisted.var = c('loan_amnt', 'term', 'int_rate', 'grade', 'sub_grade', 'emp_title','emp_length', 'home_ownership',	'annual_inc',	'verification_status', 'issue_d', 'loan_status', 
+'purpose', 'addr_state', 'dti', 'earliest_cr_line', 'open_acc', 'total_acc', 'total_pymnt',
+'total_rec_prncp', 'total_rec_int', 'open_il_6m', 'open_il_12m', 'open_il_24m', 'mths_since_rcnt_il',
+'total_bal_il', 'il_util', 'all_util', 'total_rev_hi_lim', 'mort_acc',	'mths_since_recent_bc', 
+'mths_since_recent_bc_dlq', 'num_actv_bc_tl', 'num_op_rev_tl', 'tot_hi_cred_lim', 'total_bal_ex_mort',
+'total_bc_limit') 
+
+loans.ss <- loans %>% select(which(names(loans) %in% shortlisted.var))
+```
+
+### Outliers:
+
+Look for outliers, and remove or transform the outliers that might affect the model. We are going to  consider the loans with annual income of less than 250K for the model building.
+
+```{r}
+#3. Looks for outliers.
+
+#income
+g.income <- ggplot(loans.ss, aes(x="annual_inc", y=annual_inc)) + geom_boxplot()
+
+#Data Transfromation -- Takes the base-10 logarithm of annual_inc
+#loans.ss$log_annual_inc <- log10(loans.ss$annual_inc +1 )
+g.loanAmt <- ggplot(loans.ss, aes(x="loan_amnt", y=log_annual_inc)) + geom_boxplot()
+
+#Lets consider loans with annual income < 250000
+loans.ss <- loans.ss[which(loans.ss$annual_inc < 250000), ]
+
+#loan amount , looks like this is not bad.
+g.loanAmt <- ggplot(loans.ss, aes(x="loan_amnt", y=loan_amnt)) + geom_boxplot()
+
+#grid.arrange(g.income,  g.loanAmt, nrow=1, top = "Outliers")
+
+#what else?
+```
+
+```{r visualize, fig.height=3.6, fig.cap="Distribution of loans by status and grade"}
+
+#the int_rate variable is a factor with a percentage sign, so we need to derivce a numeric
+loans.ss$int_rate <- (as.numeric(gsub("%", "", loans.ss$int_rate)))
+
+g1 <- ggplot(loans.ss, aes(loan_amnt, col = grade)) + geom_histogram(bins = 50) + facet_grid(grade ~ .)
+
+g2<- ggplot(loans.ss, aes(int_rate, fill = grade)) + geom_density() + facet_grid(grade ~ .)
+
+#grid.arrange(g1,  g2, nrow=1, top = "Loan Grades 'Vs' Loan Amt, Int Rate")
+
+g3 <- ggplot(loans.ss, aes(loan_status, loan_amnt, fill = loan_status)) + geom_boxplot() + scale_x_discrete(breaks=NULL) + ggtitle("Distribution of loans by status")
+
+loans.ss$paidLateDelinqCurrent <- "Current"
+loans.ss$paidLateDelinqCurrent[which(loans.ss$loan_status == "Fully Paid")] <- "Paid"
+loans.ss$paidLateDelinqCurrent[which(loans.ss$loan_status == "Charged Off" |
+                                       loans.ss$loan_status == "Default" )] <- "Delinq"
+loans.ss$paidLateDelinqCurrent[which(loans.ss$loan_status == "Late (16-30 days)" |
+                         loans.ss$loan_status == "Late (31-120 days)")] <- "Late"
+
+loans.ss$paidLateDelinqCurrent <- factor(loans.ss$paidLateDelinqCurrent)
+
+#g1 <- ggplot(loans.ss, aes(paidLateDelinqCurrent, loan_amnt, fill = #paidLateDelinqCurrent)) + geom_bar(stat = "identity") + theme(legend.position="none")
+
+loan_by_grade <- aggregate(loan_amnt ~ grade + paidLateDelinqCurrent, data = loans.ss, sum)
+gbar <- ggplot(loan_by_grade, aes(grade, loan_amnt, fill = paidLateDelinqCurrent)) 
+g4 <- gbar + geom_bar(stat = "identity") + theme(axis.text.x=element_text(size=7)) 
+
+#grid.arrange(g1,  g2, g3, g4, nrow=2)
+grid.arrange(g3, g4, nrow=2)
+loans.paidLateDelinqCurrent <- NULL
+```
+
+\pagebreak
+
+### Tidy Data:
+
+Convert the date fields like issue date to proper date type, and remove % sign for interest rates, dti and convert those into numeric values.And consider matured loans only. [ issue date + term months < today ], and remove variables where more than 25% of the observations are missing values.
+
+```{r tidydata, warning=FALSE}
+#set up the issue date and the earliest credit line to Date types
+loans.ss$issue_d <- as.Date(paste(paste('01', substr(loans.ss$issue_d, 1, 3), sep=''), substr(loans.ss$issue_d, 5, 9), sep=''), '%d%B%Y')
+
+loans.ss$FirstCreditDate <- as.Date(paste(paste('01', substr(loans.ss$earliest_cr_line, 1, 3), sep=''),
+                                          substr(loans.ss$earliest_cr_line, 5, 9), sep=''), '%d%B%Y')
+
+loans.ss$credit.length <- as.numeric((loans.ss$issue_d - loans.ss$FirstCreditDate) / 365.0)
+
+
+# Remove column with xx month to numeric variables
+loans.ss$dti <- (as.numeric(gsub("%", "", loans.ss$dti)))
+
+#Employment Length
+loans.ss$emp_length <- gsub(" years" , "", loans.ss$emp_length)
+loans.ss$emp_length <- gsub(" year" , "", loans.ss$emp_length)
+loans.ss$emp_length <- ifelse(loans.ss$emp_length == "10+", 10, loans.ss$emp_length)
+loans.ss$emp_length <- ifelse(loans.ss$emp_length == "< 1", 0.5, loans.ss$emp_length)
+loans.ss$emp_length <- suppressWarnings(as.numeric(loans.ss$emp_length))
+
+# Convert character to ordinal variable
+loans.ss$grade[loans.ss$grade == ""] <- NA
+loans.ss$grade <- ordered(loans.ss$grade)
+
+# Identify loans that have already come to term
+loans.ss <- loans.ss %>% mutate(term.months = as.numeric(ifelse(term == " 36 months", 36, 60))) %>% select(-term)
+
+
+loans.ss$maturity.date <- loans.ss$issue_d + months(loans.ss$term.months)
+today <- Sys.Date()
+loans.ss$mature <- ifelse(loans.ss$maturity.date < today, 1, 0)
+loans.ss$maturity.date <- NULL
+remove(today)
+
+# subset data to select only mature loans
+loans.ss <- subset(loans.ss, mature==1)
+
+# Remove variables where more than 25% of the observations are missing values
+loans.ss <- loans.ss[, colMeans(is.na(loans.ss)) <= .25]
+
+loans.ss$FirstCreditDate <- NULL
+loans.ss$earliest_cr_line <- NULL
+
+```
+
+Factorize the loan status levels with proper ordering ( 'Charged Off', 'Default', 'Late (31-120 days)', 'Late (16-30 days)', 'In Grace Period', 'Current', 'Fully Paid'). Also loans issued by Lending Club fall into three categories of verification: "income verified," "income source verified," and "not verified." The "home ownership" is another factor variable provided by the borrower during registration Or obtained from the credit report. The values are: RENT, OWN, MORTGAGE, OTHER. 
+
+```{r}
+#Set the proper order for the loan_status factor
+loans.ss$loan_status <- factor(loans.ss$loan_status, levels = c('Charged Off', 'Default', 'Late (31-120 days)', 'Late (16-30 days)', 'In Grace Period', 'Current', 'Fully Paid'))
+
+
+# Remove variables where all values are the same
+loans.ss <- loans.ss[sapply(loans.ss, function(x) length(levels(factor(x)))>1)]
+```
+
+Create a factor label *bad.loan* which indicates a loan is bad if it is delinquent, or late consider as negative, otherwise positive. This would be our response variable which indicates a loan is bad or not.
+
+```{r}
+neg_ind <- c("Default","Late (31-120 days) Charged Off","Late (16-30 days)", "Charged Off")
+loans.ss <- loans.ss %>% mutate(bad.loan = ifelse(loan_status %in% neg_ind, 1, ifelse(loan_status == "", NA, 0)))
+```
+
+### Shortlist Numeric variables: 
+
+Identify the numeric variable, and compare how those distributions plot against the good, bad label, and pick a few variables with differences in the bad and good populations.[@yhat]
+
+```{r}
+#figure out which columns are numeirc (and hence we can look at the distribution)
+numeric_cols <- sapply(loans.ss, is.numeric)
+
+#plot the distribution for bads and goods for each variable
+loans.long <- melt(loans.ss[,numeric_cols], id="bad.loan")
+
+p <- ggplot(aes(x=value, group=bad.loan, colour=bad.loan), data=loans.long)
+
+#relationship of variables with good/bad label.
+#since we do not have enough space , we are not showing this.
+g <- p + geom_density() +  facet_wrap(~variable, scales="free")
+```
+
+```{r}
+remove.numeric.vars <- c('open_acc','total_acc','total_rec_int','total_rev_hi_lim','mths_since_recent_bc',
+'num_op_rev_tl','tot_hi_cred_lim','total_bal_ex_mort','total_bc_limit','credit.length','CreditLength')
+
+loans.ss <- loans.ss %>% select((which(!(names(loans.ss) %in% remove.numeric.vars))))
+#glimpse(loans.ss)
+```
+
+
+Lets visualize the correlation graph of these numeric variable:
+
+```{r correlation, warning=FALSE, fig.cap="Correlations"}
+numeric_cols <- sapply(loans.ss, is.numeric)
+cor.matrix <- cor(loans.ss[,numeric_cols], use= "complete.obs")
+chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
+```
+
+From our numerical feature list, it appears like the *total_pymnt*, and *total_rec_prncp* are having high correlation with the *bad_loan* classification.
+
+\newpage
+
+### Dummy variables: 
+
+Since R's glm function will take care of the dummy variables, we just need to make sure that the categorical variables are factorized.
+
+```{r}
+# Remove variables that provide additional outcome data about the loan
+loans.ss$emp_title <- NULL
+#loans.ss$issue_d <- NULL
+loans.ss$addr_state <- NULL
+loans.ss$paidLateDelinqCurrent <- NULL
+loans.ss$sub_grade <- NULL
+loans.ss$loan_status <- NULL
+loans.ss$purpose <- NULL
+
+# Remove factor vars with too many levels
+too.many.levels <- function(x) {
+ is.factor(x) == TRUE & length(levels(x)) > 32
+}
+delete <- lapply(loans.ss, too.many.levels)
+loan <- loans.ss[, delete == FALSE]
+remove(too.many.levels, delete)
+
+loans.ss$bad.loan <- as.factor(loans.ss$bad.loan)
+
+
+medianVal <- median(loans.ss$emp_length, na.rm=TRUE)
+loans.ss$emp_length<- ifelse(is.na( loans.ss$emp_length )==TRUE, medianVal, loans.ss$emp_length)
+
+loans.ss$mort_acc<- ifelse(is.na( loans.ss$mort_acc )==TRUE, 0, loans.ss$mort_acc)
+
+loans.ss$num_actv_bc_tl<- ifelse(is.na( loans.ss$num_actv_bc_tl )==TRUE, 0, loans.ss$num_actv_bc_tl)
+
+```
+
+### Split the dataset into training and test:
+
+We will randomly split our dataset into training (80%) and test (20%).
+
+```{r splitdataset}
+set.seed(18) 
+
+s0=sample(1:nrow(loans.ss),0.80*nrow(loans.ss)) 
+loans.ss.train=loans.ss[s0,] 
+loans.ss.test=loans.ss[-s0,]
+
+```
+
+Number of observations in *training* dataset is `r nrow(loans.ss.train)` 
+
+Number of observations in *test* dataset is `r nrow(loans.ss.test)`
+
+\newpage
+
+## Model Development 
+
+### Model 1 - Logistic regression considering all predictors: 
+```{r model1, tab.cap="Multicollinearity - VIFs"}
+logit.fit.1 <- glm(bad.loan ~ . , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
+
+#Lets check the Multicollinearity
+vif.logit.fit1 <- vif(logit.fit.1)
+#knitr::kable(vif.logit.fit1)
+```
+
+Noticed high multicollinearity in the predictors, so removing the high VIF variables - loan_amnt, int_rate, grade, total_pymnt and total_rec_prncp and try to fit again.
+
+### Model 2 - Logistic regression removing high multicollinear predictors: 
+```{r model2, tab.cap="Logistic Regression Model 2 - Coefficients"}
+logit.fit.2 <- glm(bad.loan ~ . -loan_amnt -int_rate -grade -total_pymnt -total_rec_prncp , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
+
+#vif looks great here.
+#vif.logit.fit2 <- vif(logit.fit.2)
+#knitr::kable(vif.logit.fit2)
+
+#round(summary(logit.fit.2)$coef,4)
+kable(tidy(round(summary(logit.fit.2)$coef,4)))
+```
+
+### Model 3 - Random Forest, considering all predictors : 
+
+ With 500 trees, the random forest shows the below Gini index - a measure how each variable contribute to the homogenity of the nodes and leaves in the resulting random forest. The *principal amount received to date*, *loan amount*, *payments received to date for total amount funded*, *debt to income ratio*, *interest rate*, and *annual income* are some of the high important variables here. Its also interesting to see that *issue_d* is also shown as one of the important variables.
+ 
+```{r , fig.height=4, fig.cap="Random Forest - Variable Importance Plot", eval = TRUE}
+randomForest.fit.3 <- randomForest(bad.loan ~ ., data = loans.ss.train, do.trace=F, type="class", importance =TRUE, na.action = na.omit)
+varImpPlot(randomForest.fit.3, type=2)
+```
+
+### Model 4 - Random Forest, removing high multicollinear predictors : 
+
+Lets generate the *random forest* model by considering low VIF predictors only, and review the important features:
+
+```{r, fig.height=4, fig.cap="Random Forest - Variable Importance Plot", eval = TRUE}
+randomForest.fit.4 <- randomForest(bad.loan ~ . -loan_amnt -int_rate -grade -total_pymnt -total_rec_prncp, data = loans.ss.train, do.trace=F, type="class", importance =TRUE, na.action = na.omit)
+varImpPlot(randomForest.fit.4, type=2)
+```
+
+### Model 5 - Logistic regression by considering the features from "random forest model":
+We will consider the top 6 important features resulted from the *random forest* and build the logistic regression model.
+ 
+```{r , tab.cap="Logistic Regression with significant features from Random Forest"}
+logit.fit.5 <- glm(bad.loan ~ +dti +annual_inc +issue_d +num_actv_bc_tl +emp_length +mort_acc , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
+
+#vif looks great here.
+#vif.logit.fit5 <- vif(logit.fit.5)
+#knitr::kable(vif.logit.fit5)
+
+#round(summary(logit.fit.5)$coef,4)
+kable(tidy(round(summary(logit.fit.5)$coef,4)))
+```
+
+\newpage
+
+## Model Validation 
+
+Now we have got the trained models, lets apply those to the test dataset and derive the performance measures.
+
+$$Sensitivity = \frac{TP}{TP+FN}$$
+$$Specificity = \frac{TN}{TN+FP}$$
+$$Accuracy = \frac{TP+TN}{(TP + FN)+(FP + TN)}$$
+
+```{r}
+
+performance.results <- vector()
+
+loans.ss.test$score <- predict(logit.fit.2,newdata=loans.ss.test,type='response')
+#ggplot(loans.ss.test, aes(y=bad.loan, x=score, color=bad.loan)) + geom_point() + geom_jitter()
+
+cutoff=0.18
+loans.ss.test$predicted=as.numeric(loans.ss.test$score>cutoff) 
+TP=sum(loans.ss.test$predicted==1 & loans.ss.test$bad.loan==1) 
+FP=sum(loans.ss.test$predicted==1 & loans.ss.test$bad.loan==0) 
+FN=sum(loans.ss.test$predicted==0 & loans.ss.test$bad.loan==1) 
+TN=sum(loans.ss.test$predicted==0 & loans.ss.test$bad.loan==0)
+
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+
+#confusionMatrix(factor(loans.ss.test$predicted), factor(loans.ss.test$bad.loan), positive = "1")
+sensitivity <- round(sensitivity(factor(loans.ss.test$predicted),loans.ss.test$bad.loan, positive="1"), 4)
+specificity <- round(specificity(factor(loans.ss.test$predicted),loans.ss.test$bad.loan, negative="0"),4)
+accuracy.logit.model2 <- round( ( (TP + TN) / (P + N) ) , 4)
+cnfMtx <- confusionMatrix(loans.ss.test$predicted, loans.ss.test$bad.loan, positive = "1")
+
+roc <- roc(factor(predicted)~as.numeric(bad.loan),data=loans.ss.test, plot=FALSE, ci=TRUE)
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3, main="ROC - Logistic, Model 2")
+auc.logit.model2 <- round(auc(factor(predicted)~as.numeric(bad.loan),loans.ss.test),4)
+
+performance.results <- rbind(performance.results, c("Logistic, Model 2", accuracy.logit.model2, auc.logit.model2))
+```
+
+```{r}
+loans.ss.test$score <- predict(logit.fit.5,newdata=loans.ss.test,type='response')
+#ggplot(loans.ss.test, aes(y=bad.loan, x=score, color=bad.loan)) + geom_point() + geom_jitter()
+
+cutoff=0.18
+loans.ss.test$predicted=as.numeric(loans.ss.test$score>cutoff) 
+TP=sum(loans.ss.test$predicted==1 & loans.ss.test$bad.loan==1) 
+FP=sum(loans.ss.test$predicted==1 & loans.ss.test$bad.loan==0) 
+FN=sum(loans.ss.test$predicted==0 & loans.ss.test$bad.loan==1) 
+TN=sum(loans.ss.test$predicted==0 & loans.ss.test$bad.loan==0)
+
+# lets also calculate total number of real positives and negatives in the data 
+P=TP+FN 
+N=TN+FP
+total = P + N
+
+#confusionMatrix(factor(loans.ss.test$predicted), factor(loans.ss.test$bad.loan), positive = "1")
+sensitivity <- round(sensitivity(factor(loans.ss.test$predicted),loans.ss.test$bad.loan, positive="1"), 4)
+specificity <- round(specificity(factor(loans.ss.test$predicted),loans.ss.test$bad.loan, negative="0"),4)
+accuracy.logit.model3 <- round( ( (TP + TN) / (P + N) ) , 4)
+cnfMtx <- confusionMatrix(loans.ss.test$predicted, loans.ss.test$bad.loan, positive = "1")
+
+roc <- roc(factor(predicted)~as.numeric(bad.loan),data=loans.ss.test, plot=FALSE, ci=TRUE)
+graphics::plot(roc, legacy.axes = TRUE, col="blue", lwd=3, main="ROC - Logistic, Model 3")
+auc.logit.model3 <- round(auc(factor(predicted)~as.numeric(bad.loan),loans.ss.test),4)
+
+performance.results <- rbind(performance.results, c("Logistic, Model 5", accuracy.logit.model3, auc.logit.model3))
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+loans.ss.test$prob <- predict(randomForest.fit.4,newdata=loans.ss.test,type='prob')[,2]
+roc_pred <- prediction(loans.ss.test$prob, loans.ss.test$bad.loan)
+
+#http://stackoverflow.com/questions/20587978/calculate-accuracy-using-rocr-package-in-r
+perf <-performance(roc_pred, 'acc')
+acc.rf.selectiveVar <- round(perf@y.values[[1]][max(which(perf@x.values[[1]] >= 0.5))],4)
+
+
+auc.rf.selectiveVar <- round(as.numeric(performance(roc_pred , "auc")@y.values),4)
+
+#http://stackoverflow.com/questions/32292905/how-to-plot-a-roc-curve-from-classification-tree-probabilities
+perf <- performance(roc_pred, "tpr", "fpr")
+plot(perf, col="blue", lwd=3 , main="ROC-Random Forest, Model 4")
+abline(0,1,col="gray")
+
+performance.results <- rbind(performance.results, c("Random Forest, Model 4", acc.rf.selectiveVar, auc.rf.selectiveVar))
+```
+
+```{r}
+loans.ss.test$prob <- predict(randomForest.fit.3,newdata=loans.ss.test,type='prob')[,2]
+roc_pred <- prediction(loans.ss.test$prob, loans.ss.test$bad.loan)
+
+#http://stackoverflow.com/questions/20587978/calculate-accuracy-using-rocr-package-in-r
+perf <-performance(roc_pred, 'acc')
+acc.rf.allVar <- round(perf@y.values[[1]][max(which(perf@x.values[[1]] >= 0.5))],4)
+
+auc.rf.allVar <- round(as.numeric(performance(roc_pred , "auc")@y.values),4)
+
+#http://stackoverflow.com/questions/32292905/how-to-plot-a-roc-curve-from-classification-tree-probabilities
+perf <- performance(roc_pred, "tpr", "fpr")
+plot(perf, col="blue", lwd=3, main="ROC-Random Forest, Model 3 ")
+abline(0,1,col="gray")
+
+performance.results <- rbind(performance.results, c("Random Forest, Model 3", acc.rf.allVar, auc.rf.allVar))
+```
+
+Lets compare the selected logistic and random forest models: 
+
+```{r}
+results <- as.data.frame(performance.results);
+colnames(results) <- c("Model", "Accuracy", "AUC")
+kable(results)
+```
+
+
+  From the above, the its evident that *Random Forest, Model 3* performed well here. It has got the AUC [ P(predicted TRUE|actual TRUE) Vs P(FALSE|FALSE) ], and the accuracy [ P(TRUE|TRUE).P(actual TRUE) + P(FALSE|FALSE).P(actual FALSE) ], are both higher compared to the other models.
+
+
+\newpage
+
+# Conclusion 
+
+ Depending on the features we have chosen for this study, the *random forest* model provided the best outcome out of the few we analysed. So, the limitation here is our selection of the predictors ( 14 out of 111) and possibly the overall dataset. The logistic regression models interstingly showed high accuracy and low AUC, this could be due the cutoff point we have chosen for the accuracy, and AUC here indicates that the probability of classifying a loan is risky is roughly around 55%.
+
+  Future work - we will try including more predictors, and possibly loading data before the year 2012. We will also plan on including the *Naive Bayes* classification analysis to the model suite.
+
+# References
+
+<!-- These lines ensure references are set with hanging indents in PDF documents; they are ignored in Word. -->
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
