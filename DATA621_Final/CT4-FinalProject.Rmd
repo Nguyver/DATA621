@@ -1,5 +1,5 @@
 ---
-title: "Credict Risk Analysis - LendingClub Loan data "
+title: "Credit Risk Analysis - LendingClub Loan data "
 shorttitle: "Logistic Regression and Random Forest"
 author: 
   - name: Sreejaya
@@ -15,12 +15,12 @@ affiliation:
 
 
 abstract: |
-  LendingClub is an online lending platform for loans.Borrowers apply for a loan online, and if accepted, the loan gets listed in the marketplace. As an investor/lender, you can browse the loans in the marketplace, and choose to invest in individual loans at your discretion - basically purchase *notes* backed by payments based on loans. In this project, we will attempt to analyse and predict the if a loan is risky loan or not so that we can avoid investment in high-risk notes.
+  LendingClub is an online lending platform for loans. Borrowers apply for a loan online, and if accepted, the loan gets listed in the marketplace. As an investor/lender, you can browse the loans in the marketplace, and choose to invest in individual loans at your discretion - basically purchase *notes* backed by payments based on loans. In this project, we will attempt to analyse and predict if a loan is risky or not so that we can avoid investment in high-risk notes.
   
 author_note: |
  This report is submitted as part of the course project for 'DATA621 - Business Analytics and Data Mining' at CUNY SPS.
 
-keywords: "delinquent, dti (debt-to-income ratio), credit utilization ratio, mortgage accounts, open credit lines"
+keywords: "delinquent, dti (debt-to-income ratio), credit utilization ratio, peer-to-peer, open credit lines"
 
 class: man
 lang: english
@@ -91,14 +91,14 @@ library(ROCR)
 
 # Introduction
 
-  LendingClub's peer to peer model can not only yeild better interest rates over the traditional banking counterparts, treasury bonds and other such financial instruments, it also has advantages like lower overhead costs, lower cost of capital etc. Based on each loan application and credit report, every loan is assigned a grade ranging from A to G, and sub-grade 1 to 5,  with a corresponding interest rate. The higher the interest rate, the riskier the grade.
+  LendingClub's peer to peer model can not only yield better interest rates over the traditional banking counterparts, treasury bonds and other such financial instruments, it also has advantages like lower overhead costs, lower cost of capital etc. Based on each loan application and credit report, every loan is assigned a grade ranging from A to G, and sub-grade 1 to 5,  with a corresponding interest rate. The higher the interest rate, the riskier the loan.
 
-  The LendingClub's datasets contains comprehensive list of features ( about 115), we will shortlist few features to employ to train our model for predictions. We will build different models, and test those against the validation dataset and select a better performing model.
+  The LendingClub's datasets contains comprehensive list of features (about 115), we will shortlist few features to employ to train our model for predictions. We will build different models, and test those against the validation dataset and select a better performing model.
 
 
 # Literature Review
 
-We have reviewed few of the previous projects/analysis/kaggle competitions done in this area [@Kaggle] [@Jitendra] [@Junjie] [@Shunpo]. Majority of these were applying machine learning to improve the loan default prediction. Some of these determined that Random Forest appeared to be better performing, and others logistic regression would be better. However, real-world records often behave differently from curated data in competetions like kaggle, so, we will try to apply different regression techniques including the logistic regression, random forest on the real loan data during the years 2012-13 to continue search for a better predictive model. We will also include additional features like dti, credit utilization etc. from the LendingClub dataset, to see if they influence our target (credit risk) variable.
+We have reviewed few of the previous projects/analysis/kaggle competitions done in this area [@Kaggle] [@Jitendra] [@Junjie] [@Shunpo]. Majority of these were applying machine learning to improve the loan default prediction. Some of these determined that Random Forest appeared to be better performing, and others logistic regression would be better. However, real-world records often behave differently from curated data in competitions like kaggle, so, we will try to apply different regression techniques including the logistic regression and random forest on the real loan data during the years 2012-13 to search for a better predictive model. We will also include additional features like dti, credit utilization etc. from the LendingClub dataset, to see if they influence our target (credit risk) variable.
 
 
 # Methodology 
@@ -108,14 +108,14 @@ The dataset we used for this analysis is from publicly available data from Lendi
 
 
 ## Data Preparation 
-As part of the data preparation, we will try to fix the data issues we noticed in our exploratory analysis, which involves treating the outliers, missing data, invalid data etc. We will also identify the data classifications, and create dummy variables wherver required, and will convert the categorical data to numeric data which would help us later in model building.
+As part of the data preparation, we will try to fix the data issues we noticed in our exploratory analysis, which involves treating the outliers, missing data, invalid data etc. We will also identify the data classifications, and create dummy variables wherever required, and will convert the categorical data to numeric data which would help us later in model building.
 
 
 ## Model Development 
 Our primary objective here is to *identify risky loans*, which is binary outcome, so we will be using *logistics regression, naive bayes, and random forest* modeling techniques to examine and predict the credit risk using a training subset (80%) of the original full data. 
 
 ## Model Validation 
-A validation subset (20%) was used to test how well our candidate models predit the target variable. AUC and the model Accuracy will be used to select a better predicting model.
+A validation subset (20%) was used to test how well our candidate models predict the target variable. AUC and the model Accuracy will be used to select a better predicting model.
 
 \newpage
 
@@ -169,7 +169,7 @@ loans.ss <- loans %>% select(which(names(loans) %in% shortlisted.var))
 
 ### Outliers:
 
-Look for outliers, and remove or transform the outliers that might affect the model. We are going to  consider the loans with annual income of less than 250K for the model building.
+Look for outliers and remove or transform the outliers that might affect the model. We are going to  consider the loans with annual income of less than 250K for the model building.
 
 ```{r}
 #3. Looks for outliers.
@@ -229,7 +229,7 @@ loans.paidLateDelinqCurrent <- NULL
 
 ### Tidy Data:
 
-Convert the date fields like issue date to proper date type, and remove % sign for interest rates, dti and convert those into numeric values.And consider matured loans only. [ issue date + term months < today ], and remove variables where more than 25% of the observations are missing values.
+Convert the date fields such as issue date to a proper date format, and remove % sign for interest rates, dti and convert those into numeric values. Furthermore, we will consider only matured loans. [ issue date + term months < today ], and remove variables where more than 25% of the observations are missing values.
 
 ```{r tidydata, warning=FALSE}
 #set up the issue date and the earliest credit line to Date types
@@ -276,7 +276,7 @@ loans.ss$earliest_cr_line <- NULL
 
 ```
 
-Factorize the loan status levels with proper ordering ( 'Charged Off', 'Default', 'Late (31-120 days)', 'Late (16-30 days)', 'In Grace Period', 'Current', 'Fully Paid'). Also loans issued by Lending Club fall into three categories of verification: "income verified," "income source verified," and "not verified." The "home ownership" is another factor variable provided by the borrower during registration Or obtained from the credit report. The values are: RENT, OWN, MORTGAGE, OTHER. 
+Factorize the loan status levels with proper ordering ( 'Charged Off', 'Default', 'Late (31-120 days)', 'Late (16-30 days)', 'In Grace Period', 'Current', 'Fully Paid'). Also loans issued by Lending Club fall into three categories of verification: "income verified," "income source verified," and "not verified." The "home ownership" is another factor variable provided by the borrower during registration or obtained from the credit report. The values are: RENT, OWN, MORTGAGE, OTHER. 
 
 ```{r}
 #Set the proper order for the loan_status factor
@@ -329,7 +329,7 @@ cor.matrix <- cor(loans.ss[,numeric_cols], use= "complete.obs")
 chart.Correlation(cor.matrix, histogram=TRUE, pch=25)
 ```
 
-From our numerical feature list, it appears like the *total_pymnt*, and *total_rec_prncp* are having high correlation with the *bad_loan* classification.
+From our numerical feature list, it appears like the *total_pymnt*, and *total_rec_prncp* has high correlation with the *bad_loan* classification.
 
 \newpage
 
@@ -410,10 +410,10 @@ logit.fit.2 <- glm(bad.loan ~ . -loan_amnt -int_rate -grade -total_pymnt -total_
 #round(summary(logit.fit.2)$coef,4)
 kable(tidy(round(summary(logit.fit.2)$coef,4)))
 ```
-
+  
 ### Model 3 - Random Forest, considering all predictors : 
 
- With 500 trees, the random forest shows the below Gini index - a measure how each variable contribute to the homogenity of the nodes and leaves in the resulting random forest. The *principal amount received to date*, *loan amount*, *payments received to date for total amount funded*, *debt to income ratio*, *interest rate*, and *annual income* are some of the high important variables here. Its also interesting to see that *issue_d* is also shown as one of the important variables.
+ With 500 trees, the random forest shows the below Gini index - a measure how each variable contribute to the homogeneity of the nodes and leaves in the resulting random forest. The *principal amount received to date*, *loan amount*, *payments received to date for total amount funded*, *debt to income ratio*, *interest rate*, and *annual income* are some of the high important variables here. Its also interesting to see that *issue_d* is also shown as one of the important variables.
  
 ```{r , fig.height=4, fig.cap="Random Forest - Variable Importance Plot", eval = TRUE}
 randomForest.fit.3 <- randomForest(bad.loan ~ ., data = loans.ss.train, do.trace=F, type="class", importance =TRUE, na.action = na.omit)
@@ -422,14 +422,14 @@ varImpPlot(randomForest.fit.3, type=2)
 
 ### Model 4 - Random Forest, removing high multicollinear predictors : 
 
-Lets generate the *random forest* model by considering low VIF predictors only, and review the important features:
+Lets generate the *random forest* model by considering low VIF predictors only and review the important features:
 
 ```{r, fig.height=4, fig.cap="Random Forest - Variable Importance Plot", eval = TRUE}
 randomForest.fit.4 <- randomForest(bad.loan ~ . -loan_amnt -int_rate -grade -total_pymnt -total_rec_prncp, data = loans.ss.train, do.trace=F, type="class", importance =TRUE, na.action = na.omit)
 varImpPlot(randomForest.fit.4, type=2)
 ```
-
-### Model 5 - Logistic regression by considering the features from "random forest model":
+  
+### Model 5 - Logistic regression considering the features from "random forest model":
 We will consider the top 6 important features resulted from the *random forest* and build the logistic regression model.
  
 ```{r , tab.cap="Logistic Regression with significant features from Random Forest"}
@@ -447,7 +447,7 @@ kable(tidy(round(summary(logit.fit.5)$coef,4)))
 
 ## Model Validation 
 
-Now we have got the trained models, lets apply those to the test dataset and derive the performance measures.
+Now that our models are trained, lets apply those to the test dataset and derive the performance measures.
 
 $$Sensitivity = \frac{TP}{TP+FN}$$
 $$Specificity = \frac{TN}{TN+FP}$$
@@ -552,7 +552,7 @@ abline(0,1,col="gray")
 performance.results <- rbind(performance.results, c("Random Forest, Model 3", acc.rf.allVar, auc.rf.allVar))
 ```
 
-Lets compare the selected logistic and random forest models: 
+Lets compare the selected logistic and random forest models:   
 
 ```{r}
 results <- as.data.frame(performance.results);
@@ -560,8 +560,8 @@ colnames(results) <- c("Model", "Accuracy", "AUC")
 kable(results)
 ```
 
-
-  From the above, the its evident that *Random Forest, Model 3* performed well here. It has got the AUC [ P(predicted TRUE|actual TRUE) Vs P(FALSE|FALSE) ], and the accuracy [ P(TRUE|TRUE).P(actual TRUE) + P(FALSE|FALSE).P(actual FALSE) ], are both higher compared to the other models.
+  
+  From the above, it is evident that *Random Forest, Model 3* performed well here. The AUC [ P(predicted TRUE|actual TRUE) Vs P(FALSE|FALSE) ] and the accuracy [ P(TRUE|TRUE).P(actual TRUE) + P(FALSE|FALSE).P(actual FALSE) ], are both higher compared to the other models.
 
 
 \newpage
