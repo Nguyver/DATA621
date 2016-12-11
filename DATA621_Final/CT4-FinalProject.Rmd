@@ -136,7 +136,7 @@ if(!file.exists(filename)){
 #for practice only loading 10K rows
 loans <- read.csv(filename, skip = 1, header=TRUE)
 
-#glimpse(loans)
+glimpse(loans)
 #summary(loans)
 ```
 
@@ -392,9 +392,11 @@ Number of observations in *test* dataset is `r nrow(loans.ss.test)`
 ```{r model1, tab.cap="Multicollinearity - VIFs"}
 logit.fit.1 <- glm(bad.loan ~ . , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
 
+kable(tidy(round(summary(logit.fit.1)$coef,4)))
+
 #Lets check the Multicollinearity
 vif.logit.fit1 <- vif(logit.fit.1)
-#knitr::kable(vif.logit.fit1)
+knitr::kable(vif.logit.fit1)
 ```
 
 Noticed high multicollinearity in the predictors, so removing the high VIF variables - loan_amnt, int_rate, grade, total_pymnt and total_rec_prncp and try to fit again.
