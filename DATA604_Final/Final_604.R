@@ -48,15 +48,55 @@ for(run in 1:replication)
   
   run.gen <- t(as.data.frame(power.gen))
   run.data <- cbind(run,'Generate',run.gen)
-  
+ 
   run.consume <- t(as.data.frame(rnd.daily))
   run.data2 <- cbind(run,'Consume',run.consume)
   
   power <- rbind(power, run.data)
   power <- rbind(power, run.data2)
 }
-power
+
 colnames(power) <- c('Run','Type', 1:365)
 rownames(power) <- c(1:nrow(power))
 
 View(power)
+
+#The average cost per watt in the U.S. is $.22 per watt.
+#Average energy bill
+
+avg.bill =.22
+solarlifeexpectancy <- 20
+totalbill <- rnd.daily*avg.bill
+Total_utilityBill <-sum(totalbill)
+
+#totalbill for 15 years
+(sum(totalbill)*solarlifeexpectancy)
+
+diff_inenergy <- abs(sum(rnd.daily)-sum(run.gen))
+toutility <- diff_inenergy *avg.bill
+
+#Cost of solar panel
+  #6kW solar energy system cost: $15,000
+  #8kW solar energy system cost: $20,000
+  #10kW solar energy system cost: $25,000
+  #15kW solar energy system cost: $34,000
+
+
+df.solarcost <- data.frame(c(6,8,10,15),c(8,10,15),c(15000,20000,25000,34000))
+colnames(df.solarcost) <- c("Start_kwatts","End_kwatts", "cost")
+
+for (i in 1: length(df.solarcost))
+{
+  if (df.solarcost[i,1]<=sum(run.gen)/1000 && df.solarcost[i,2] >=sum(run.gen)/1000 ) 
+  {
+    initialcost <- df.solarcost[i+1,3]
+  }
+}
+
+print(initialcost)
+Total_panelcost = initialcost + toutility*solarlifeexpectancy
+
+
+
+data.frame(Total_panelcost,Total_utilityBill)
+
