@@ -83,7 +83,7 @@ Data Prepation - Correlations
 ![Data Correlations](images/Data_Cor.PNG)
 
 
-Data Prepation - Tiday Data
+Data Preparation - Tidying Data
 =========================================================
 
  - Remove features with majority of NAs ( 80% NAs)
@@ -180,4 +180,4 @@ Results
 Future work
 ==========================================================
 
-Future work - we will try including more predictors, and possibly loading data before the year 2012. And plan on including the *Naive Bayes* classification analysis, Possibly *Panel Regression* to the model suite.
+Future work - we will try including more predictors, and possibly loading data before the year 2012. And plan on including the *Naive Bayes* classification analysis, Possibly *Multinomial Logistics Regression* to the model suite.

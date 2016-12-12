@@ -39,8 +39,6 @@ output: papaja::apa6_pdf
 
 
 ```{r setup, include=FALSE}
-# PER PROF.B, THE REPORT NEEDS TO BE IN 'ACADEMIC APA STYLE' REPORT #
-
 # ***** NOTE: MAKE SURE YOU HAVE MIKTEX  - https://miktex.org/howto/install-miktex *****
 # **** THEN INSTALL BELOW **** #
 #devtools::install_github("crsh/papaja", force = TRUE)
@@ -82,7 +80,6 @@ library(PerformanceAnalytics)
 library(lubridate)
 library(randomForest)
 library(broom)
-library(BMA)
 library(caret)
 library(pROC)
 library(ROCR)
@@ -98,7 +95,16 @@ library(ROCR)
 
 # Literature Review
 
-We have reviewed few of the previous projects/analysis/kaggle competitions done in this area [@Kaggle] [@Jitendra] [@Junjie] [@Shunpo]. Majority of these were applying machine learning to improve the loan default prediction. Some of these determined that Random Forest appeared to be better performing, and others logistic regression would be better. However, real-world records often behave differently from curated data in competitions like kaggle, so, we will try to apply different regression techniques including the logistic regression and random forest on the real loan data during the years 2012-13 to search for a better predictive model. We will also include additional features like dti, credit utilization etc. from the LendingClub dataset, to see if they influence our target (credit risk) variable.
+We have reviewed few of the previous projects/analysis/kaggle competitions done in this area [@Kaggle] [@Jitendra] [@Junjie] [@Shunpo]. Majority of these were applying machine learning to improve the loan default prediction. Some of these determined that Random Forest appeared to be better performing, and others logistic regression would be better. However, real-world records often behave differently from curated data in competitions like kaggle, so, we will try to apply different regression techniques including the logistic regression and random forest on the real loan data during the years 2012-13 to search for a better predictive model. We will also include additional features like dti, credit utilization etc. from the LendingClub dataset, to see if they influence our target (credit risk) variable. 
+
+  The questions for logistic regression are, (1) what is the best way to describe the relationship between predictor and outcome, and (2) Is the relationship statistically significant - does knowing something about the predictor variable enable a better prediction of the outcome than knowing nothing about the predictor ?. The logistic regression equation takes the form: 
+  
+  $$log \;  odds = \log{(\frac{p}{1-p})}  = b_0 + b_1 * (predictor \; value) $$
+ 
+where $b_1$ is the amount of increase in the log odds of the outcome given by an increase in one unit of the predictor, and $b_0$ is the intercept of the model. So, the logistic regression does *not* assume a linear relationship between the dependent and independent variables (but between the logit of the outcome and the predictor values). There are several sophisticated alternatives to logistic regression techniques available, such as decision trees, random forests, neural networks etc. [@PhilReed]
+
+Random forest is a nonparametric machine learning strategy that can be used for building a risk prediction model in survival analysis. In survival settings, the predictor is an *ensemble* formed by combining the results of many survival trees. [@Ulla] 
+
 
 
 # Methodology 
@@ -112,10 +118,10 @@ As part of the data preparation, we will try to fix the data issues we noticed i
 
 
 ## Model Development 
-Our primary objective here is to *identify risky loans*, which is binary outcome, so we will be using *logistics regression, naive bayes, and random forest* modeling techniques to examine and predict the credit risk using a training subset (80%) of the original full data. 
+Our primary objective here is to *identify risky loans*, which is binary outcome, so we will be using *logistics regression, and random forest* modeling techniques to examine and predict the credit risk using a training subset (80%) of the original full data. 
 
 ## Model Validation 
-A validation subset (20%) was used to test how well our candidate models predict the target variable. AUC and the model Accuracy will be used to select a better predicting model.
+A validation subset (20%) was used to test how well our candidate models predict the target variable. AUC , the model Accuracy and mis-classification error will be used to select a better predicting model.
 
 \newpage
 
@@ -136,8 +142,6 @@ if(!file.exists(filename)){
 #for practice only loading 10K rows
 loans <- read.csv(filename, skip = 1, header=TRUE)
 
-#glimpse(loans)
-#summary(loans)
 ```
 
 ### Feature Selection:
@@ -386,9 +390,10 @@ Number of observations in *test* dataset is `r nrow(loans.ss.test)`
 
 \newpage
 
-## Model Development 
+## Model Development  
 
-### Model 1 - Logistic regression considering all predictors: 
+### Model 1 - Logistic regression considering all predictors:  
+
 ```{r model1, tab.cap="Multicollinearity - VIFs"}
 logit.fit.1 <- glm(bad.loan ~ . , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
 
@@ -396,7 +401,7 @@ logit.fit.1 <- glm(bad.loan ~ . , data=loans.ss.train, family = binomial(link = 
 
 #Lets check the Multicollinearity
 vif.logit.fit1 <- vif(logit.fit.1)
-knitr::kable(vif.logit.fit1)
+#knitr::kable(vif.logit.fit1)
 ```
 
 Noticed high multicollinearity in the predictors, so removing the high VIF variables - loan_amnt, int_rate, grade, total_pymnt and total_rec_prncp and try to fit again.
@@ -413,14 +418,17 @@ logit.fit.2 <- glm(bad.loan ~ . -loan_amnt -int_rate -grade -total_pymnt -total_
 kable(tidy(round(summary(logit.fit.2)$coef,4)))
 ```
   
-### Model 3 - Random Forest, considering all predictors : 
+### Model 3 - Random Forest, considering all predictors :  
 
- With 500 trees, the random forest shows the below Gini index - a measure how each variable contribute to the homogeneity of the nodes and leaves in the resulting random forest. The *principal amount received to date*, *loan amount*, *payments received to date for total amount funded*, *debt to income ratio*, *interest rate*, and *annual income* are some of the high important variables here. Its also interesting to see that *issue_d* is also shown as one of the important variables.
+ Since the decision trees could be susceptible to noise in the training data, lets directly go with random forest, which would randomly select observations and variables, and build several trees and takes majority vote from all these trees for our prediction. With 500 trees, the random forest shows the below Gini index - a measure how each variable contribute to the homogeneity of the nodes and leaves in the resulting random forest. The *principal amount received to date*, *loan amount*, *payments received to date for total amount funded*, *debt to income ratio*, *interest rate*, and *annual income* are some of the high important variables here. Its also interesting to see that *issue_d* is also shown as one of the important variables.
  
 ```{r , fig.height=4, fig.cap="Random Forest - Variable Importance Plot", eval = TRUE}
 randomForest.fit.3 <- randomForest(bad.loan ~ ., data = loans.ss.train, do.trace=F, type="class", importance =TRUE, na.action = na.omit)
+randomForest.fit.3
 varImpPlot(randomForest.fit.3, type=2)
 ```
+
+Here, Out Of Bag error estimate can be taken as estimate of performance on unseen data. 
 
 ### Model 4 - Random Forest, removing high multicollinear predictors : 
 
@@ -431,8 +439,9 @@ randomForest.fit.4 <- randomForest(bad.loan ~ . -loan_amnt -int_rate -grade -tot
 varImpPlot(randomForest.fit.4, type=2)
 ```
   
-### Model 5 - Logistic regression considering the features from "random forest model":
-We will consider the top 6 important features resulted from the *random forest* and build the logistic regression model.
+### Model 5 - Logistic regression considering the features from "random forest model": 
+
+We thought, even if we can not use randorm forest as primary tool for some reason, we can still use it to select important variables from our data. We will consider the top 6 important features resulted from the *random forest* and build the logistic regression model.
  
 ```{r , tab.cap="Logistic Regression with significant features from Random Forest"}
 logit.fit.5 <- glm(bad.loan ~ +dti +annual_inc +issue_d +num_actv_bc_tl +emp_length +mort_acc , data=loans.ss.train, family = binomial(link = "logit"),control = list(maxit = 50))
@@ -554,6 +563,8 @@ abline(0,1,col="gray")
 performance.results <- rbind(performance.results, c("Random Forest, Model 3", acc.rf.allVar, auc.rf.allVar))
 ```
 
+\newpage
+
 Lets compare the selected logistic and random forest models:   
 
 ```{r}
@@ -572,7 +583,7 @@ kable(results)
 
  Depending on the features we have chosen for this study, the *random forest* model provided the best outcome out of the few we analysed. So, the limitation here is our selection of the predictors ( 14 out of 111) and possibly the overall dataset. The logistic regression models interstingly showed high accuracy and low AUC, this could be due the cutoff point we have chosen for the accuracy, and AUC here indicates that the probability of classifying a loan is risky is roughly around 55%.
 
-  Future work - we will try including more predictors, and possibly loading data before the year 2012. We will also plan on including the *Naive Bayes* classification analysis to the model suite.
+  Future work - we will try including more predictors, and possibly loading data before the year 2012. We will also plan on including the *Naive Bayes* classification analysis and multinomial logistic regression techniques to the model suite.
 
 # References
 
