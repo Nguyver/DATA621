@@ -96,7 +96,8 @@ for (i in 1: length(df.solarcost))
 print(initialcost)
 Total_panelcost = initialcost + toutility*solarlifeexpectancy
 
-
-
 data.frame(Total_panelcost,Total_utilityBill)
+
+## I would like to recommend if we add more panels and sell the extra energy to the grid, 
+#Solar panel implimentation will be more attractive to the public. That will help the environment too
 
