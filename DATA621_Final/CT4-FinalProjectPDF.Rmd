@@ -465,6 +465,8 @@ varImpPlot(randomForest.fit.3, type=2)
 
 Here, Out Of Bag error estimate can be taken as estimate of performance on unseen data. 
 
+\newpage
+
 ### Model 4 - Random Forest, removing high multicollinear predictors : 
 
 Lets generate the *random forest* model by considering low VIF predictors only and review the important features:
@@ -473,7 +475,9 @@ Lets generate the *random forest* model by considering low VIF predictors only a
 randomForest.fit.4 <- randomForest(bad.loan ~ . -loan_amnt -int_rate -grade -total_pymnt -total_rec_prncp, data = loans.ss.train, do.trace=F, type="class", importance =TRUE, na.action = na.omit)
 varImpPlot(randomForest.fit.4, type=2)
 ```
-  
+
+\newpage
+
 ### Model 5 - Logistic regression considering the features from "random forest model": 
 
 We thought, even if we can not use randorm forest as primary tool for some reason, we can still use it to select important variables from our data. We will consider the top 6 important features resulted from the *random forest* and build the logistic regression model.
