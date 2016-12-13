@@ -16,13 +16,17 @@ monthlyMode <- 3*monthlyavg-monthlymin-monthlymax
 #Average NY Electricity Use
 #http://www.eia.gov/electricity/sales_revenue_price/xls/table5_a.xlsx
 
-#Observed
+#Average Family size: 2.54
+#https://www.statista.com/statistics/183648/average-size-of-households-in-the-us/
+#Census.gov :2.63
+
+#Observed Data
 monthlyusage <- c(491,409,78,616,198,1321,1849,1265,512,312,310,491)
 averageuse <- monthlyusage/monthdays
 
 replication <-100
 #panel.size <- 5
-panel.seq <- seq(from=5, to=30, by=5)
+panel.seq <- seq(from=5, to=40, by=5)
 
 #Simulation Starts here
 pwr.con <- data.frame()
@@ -77,6 +81,9 @@ for (panel in panel.seq)
 
 summary.con <- t(as.data.frame(apply(pwr.con,2,mean)))
 
+total.gen <- as.data.frame(apply(summary.gen[,-1], 1, sum))
+summary.gen <-
+
 colnames(summary.gen) <- c('Num Panels', 1:365)
 rownames(summary.gen) <- c(1:nrow(summary.gen))
 
@@ -86,6 +93,8 @@ rownames(summary.con) <- c(1:nrow(summary.con))
 
 View(summary.gen)
 View(summary.con)
+
+##-----------------------------------------------------
 
 #The average cost per watt in the U.S. is $.22 per kWh.
 #Average energy bill
