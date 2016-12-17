@@ -101,36 +101,30 @@ avg.watt <- c(0.186,0.182,0.187,0.188,0.177,0.190,0.191,0.191,0.191,0.179,0.178,
 #Simulate daily cost of electricity based on montly average of 2016
 kWh.daily <- vector()
 save.gen <- vector()
-# for (i in 1:length(monthdays))
-# {
-#   kWh.daily <- c(kWh.daily,(rnorm(monthdays[i],avg.watt[i], sd=sd(avg.watt))))
-# }
 
-#Numbers are still off - Work in progress
-#
-for (panel in panel.seq)
+for (panel in 1:length(panel.seq))
 {
   kWh.daily <- vector()
   for (i in 1:length(monthdays))
   {
     kWh.daily <- c(kWh.daily,(rnorm(monthdays[i],avg.watt[i], sd=sd(avg.watt))))
   }
-    temp.gen <- cbind(panel,(summary.gen[1,2:ncol(summary.gen[,-1])]*kWh.daily))
+    temp.gen <- cbind(panel.seq[panel],(summary.gen[panel,2:ncol(summary.gen)]*kWh.daily))
     save.gen <- rbind(save.gen, temp.gen)
 }
 #MAYBE: simulate life expectancy of system
 
-
-#Numbers are still off - Work in progress
-#
 money <- as.data.frame(apply(save.gen[,-1], 1, sum))
+rownames(money) <- panel.seq
+colnames(money) <- c("Savings")
 
 bill.year <- summary.con*watt.daily
 total.year <-sum(bill.year)
 
+View(money)
+
 ##-----------------------------------------------------
 
-pv.perf <- 
 
  
 #totalbill for 15 years
