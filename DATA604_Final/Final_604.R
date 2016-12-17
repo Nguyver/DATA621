@@ -55,7 +55,7 @@ for (panel in panel.seq)
     rnd.daily <- vector()
     for (i in 1:length(monthdays))
     {
-      rnd.daily <- c(rnd.daily,(rnorm(monthdays[i],averageuse[i])))
+      rnd.daily <- c(rnd.daily,(rnorm(monthdays[i],averageuse[i], sd(averageuse))))
     }
     
     run.gen <- t(as.data.frame(power.gen))
@@ -69,20 +69,14 @@ for (panel in panel.seq)
   colnames(pwr.gen) <- c('Num Panels', 1:365)
   rownames(pwr.gen) <- c(1:nrow(pwr.gen))
   
-  #colnames(pwr.con) <- c(1:365)
-  #rownames(pwr.con) <- c(1:nrow(pwr.con))
-  
   temp.gen <- t(as.data.frame(apply(pwr.gen,2,mean)))
-  #temp.con <- t(as.data.frame(apply(pwr.con,2,mean)))
   
   summary.gen <- rbind(summary.gen, temp.gen)
-  #summary.con <- rbind(summary.con, temp.con)
 }
 
 summary.con <- t(as.data.frame(apply(pwr.con,2,mean)))
 
 total.gen <- as.data.frame(apply(summary.gen[,-1], 1, sum))
-summary.gen <-
 
 colnames(summary.gen) <- c('Num Panels', 1:365)
 rownames(summary.gen) <- c(1:nrow(summary.gen))
@@ -91,20 +85,54 @@ colnames(summary.con) <- c(1:365)
 rownames(summary.con) <- c(1:nrow(summary.con))
 
 
-View(summary.gen)
-View(summary.con)
+#View(summary.gen)
+#View(summary.con)
+
+
+
+#The average cost per watt in the U.S. is $.22 per kWh.
+#https://www.bls.gov/regions/new-york-new-jersey/news-release/averageenergyprices_newyorkarea.htm
+
+#Average energy bill
+avg.watt <- c(0.186,0.182,0.187,0.188,0.177,0.190,0.191,0.191,0.191,0.179,0.178,0.182)
+
+#http://www.engineering.com/ElectronicsDesign/ElectronicsDesignArticles/ArticleID/7475/What-Is-the-Lifespan-of-a-Solar-Panel.aspx
+
+#Simulate daily cost of electricity based on montly average of 2016
+kWh.daily <- vector()
+save.gen <- vector()
+# for (i in 1:length(monthdays))
+# {
+#   kWh.daily <- c(kWh.daily,(rnorm(monthdays[i],avg.watt[i], sd=sd(avg.watt))))
+# }
+
+#Numbers are still off - Work in progress
+#
+for (panel in panel.seq)
+{
+  kWh.daily <- vector()
+  for (i in 1:length(monthdays))
+  {
+    kWh.daily <- c(kWh.daily,(rnorm(monthdays[i],avg.watt[i], sd=sd(avg.watt))))
+  }
+    temp.gen <- cbind(panel,(summary.gen[1,2:ncol(summary.gen[,-1])]*kWh.daily))
+    save.gen <- rbind(save.gen, temp.gen)
+}
+#MAYBE: simulate life expectancy of system
+
+
+#Numbers are still off - Work in progress
+#
+money <- as.data.frame(apply(save.gen[,-1], 1, sum))
+
+bill.year <- summary.con*watt.daily
+total.year <-sum(bill.year)
 
 ##-----------------------------------------------------
 
-#The average cost per watt in the U.S. is $.22 per kWh.
-#Average energy bill
-#http://www.engineering.com/ElectronicsDesign/ElectronicsDesignArticles/ArticleID/7475/What-Is-the-Lifespan-of-a-Solar-Panel.aspx
+pv.perf <- 
 
-avg.bill =.22
-solarlifeexpectancy <- 20
-totalbill <- summary.con*avg.bill
-Total_utilityBill <-sum(totalbill)
-
+ 
 #totalbill for 15 years
 (sum(totalbill)*solarlifeexpectancy)
 
