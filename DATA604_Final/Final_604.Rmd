@@ -1,19 +1,223 @@
 ---
-title: "Simulation-Solar Panel"
-author: "Sreejaya, Suman, Vuthy"
-date: "December 11, 2016"
-output: pdf_document
+title: "Simulation - Solar Panels"
+author: "Sreejaya, Vuthy and Suman"
+date: "December 18, 2016"
+documentclass: article 
+geometry: margin=0.75in
+output: 
+  pdf_document:
+    number_sections: yes
+    fig_caption: true
+subtitle: "DATA 604: Simulation and Modeling"
 ---
 
-Solar energy has the greatest potential of all the sources of renewable energy. If only a small amount of this
-form of energy could be used, it will be one of the most important supplies of energy.
 
-```{r}
-library(triangle)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
+options(scipen=999)
 ```
- Average sunlight received in 2015 in NYC. Data contain  average, minimum, and maximum sunlight recived.
 
-*Initial Readings-*
+```{r, results='hide'}
+
+if (!require("devtools",character.only = TRUE)) (install.packages("devtools",dep=TRUE))
+if (!require("yaml",character.only = TRUE)) (install.packages("yaml",dep=TRUE))
+if (!require("rprojroot",character.only = TRUE)) (install.packages("rprojroot",dep=TRUE))
+if (!require("knitcitations",character.only = TRUE)) (install.packages("knitcitations",dep=TRUE))
+if (!require("RefManageR",character.only = TRUE)) (install.packages("RefManageR",dep=TRUE))
+```
+
+```{r , load libraries}
+library(knitcitations)
+library(RefManageR)
+library(devtools)
+library(yaml)
+library(papaja)
+library(rprojroot)
+library(triangle)
+library(ggplot2)
+library(gridExtra)
+```
+
+
+```{r bib-data, echo=FALSE}
+Mantosh <- bibentry(bibtype="Misc",
+                 publisher="photoemission",
+                 author=personList(person(family="Chawla", given="Mantosh")),
+                 title="Selecting right solar simulator",
+                 year=2011,
+                 url="http://www.photoemission.com/techpapers/A%20step%20by%20step%20guide%20to%20selecting%20a%20Solar%20Simulator%20Ver.%203.pdf")
+
+
+energysage <- bibentry(bibtype="Misc",
+                 author=personList(person(family="Sage", given="Energy")),
+                 title="Residential electricity prices going up or down",
+                 year=2016,
+          url="http://news.energysage.com/residential-electricity-prices-going-up-or-down/")
+
+basics <- bibentry(bibtype="Misc",
+                 author=personList(person(family="sunforce", given="")),
+                 title="Basics of Solar Power for Producing Electricity",
+                 year=2015,
+                 url="http://www.sunforceproducts.com/Support%20Section/Solar%20Panel%20&%20Charge%20Controllers/The%20Basics%20of%20Solar%20Power%20for%20Producing%20Electricity.pdf")
+
+
+eia <- bibentry(bibtype="Misc",
+                 author=personList(person(family="EIA", given="")),
+                 title= "EIA FAQ",
+                 year= 2015,
+                 url= "https://www.eia.gov/tools/faqs/faq.cfm?id=97&t=3")
+
+
+IOPScience <- bibentry(bibtype="Article",
+                 author=personList(person(family="E M", given="Natsheh"), 
+                                   person(family="A", given="Albarbar")),
+                 title="Solar power plant performance evaluation",
+                 year=2012,
+                 journal = "IOP Science",
+                 url="http://iopscience.iop.org/article/10.1088/1742-6596/364/1/012122/pdf")
+
+ScienceDirect <- bibentry(bibtype="Article",
+                 author=personList(person(family="T.M. Razykov", given=""), 
+                                   person(family="C.S. Ferekides", given=""),
+                                   person(family="E. Stefanakos", given=""),
+                                   person(family="H.S. Ullal", given=""),
+                                   person(family="H.M.Upadhyaya", given="")),
+                 title="Solar photovoltaic electricity:Current status and future",
+                 year=2011,
+                  journal = "Sicene Direct",
+                 url="http://www.sciencedirect.com/science/article/pii/S0038092X1000366X")
+
+simulation.sd <- bibentry(bibtype="Article",
+                 author=personList(person(family="Bellia", given="Habbati"), 
+                                   person(family="Youcef", given="Ramdani"),
+                                   person(family="Fatima", given="Moulay")),
+                 title="A detailed modeling of photovoltaic module using MATLAB",
+                 year=2014,
+                  journal = "Sicene Direct",
+                 url="http://www.sciencedirect.com/science/article/pii/S2090997714000182")
+
+
+free.sun.power <- bibentry(bibtype="Misc",
+                 author=personList(person(family="Sun Power", given="Free")),
+                 title="Solar Energy systems wiring diagram",
+                 year=2016,
+                 url="http://www.freesunpower.com/example_systems.php#examples")
+
+
+house.hold <- bibentry(bibtype="Misc",
+                 author=personList(person(family="statista", given="")),
+                 title="average-size-of-households-in-the-us",
+                 year=2016,
+                 url="https://www.statista.com/statistics/183648/average-size-of-households-in-the-us/")
+
+ny.solar <- bibentry(bibtype="Misc",
+                 author=personList(person(family="nrel", given="gov")),
+                 title="Solar Radiation - NYC",
+                 year=2016,
+                 url="http://rredc.nrel.gov/solar/old_data/nsrdb/1961-1990/redbook/sum2/94728.txt")
+
+```
+
+
+# Abstract
+
+Solar energy has the greatest potential of all the sources of renewable energy. If only a small amount of this
+form of energy could be used, it will be one of the most important supplies of energy. In this work, we will attempt to simulate a model comprising of the photovoltaic array, battery storage, controller and converters, and produce energy generation, consumption stats. We would then compare that with the traditional grid electricity  to determine if going with *solar* makes economic sense or not.
+
+# Keywords
+
+Solar; Photovoltacis; Power Inverter; electricity; kW
+
+
+# Introduction
+
+The world energy consumption is 10 terawatts per year, and by 2050, its projected to be about 30 TW. The world will need about 20 TW of non-$CO_{2}$ energy to stabilize the $CO_2$ in the atmosphere by mid-century.The simplest scenario to stabilize $CO_2$ by mid-century is to use the renewables for electricity generation `r citep(ScienceDirect)`.
+
+Solar power works well for majority of the items except large electric appliances that use an electric *heat element* such as a water heater, clothes dryer and electric stove - for example - or total electric home heating systems. Its not cost effective to use solar power for these items. So, for these utilities , natural gas, propane or other alternative is usually recommended. 
+
+Using solar power to produce electricity is not the same as using solar to produce heat. Solar *thermal* principles are applied to produce hot fluids or air. *Photovoltaic* principles are used to produce electricity. A solar panel (PV Panel) is made of the natural element, *silicon*, which becomes charged electrically when subjected to sun light. This electrical charge is consolidated in the PV Panel and directed to the output terminals to produce low voltage (Direct Current). The intensity of the Sun's radiation changes with the hour of the day, time of the year and weather conditions. So, to be able to make calculations in planning a system, the total amount of solar radiation energy is expressed in hour of full sunlight per day - *peak sun hours* (average amount of sun available per day thoughout the year). So depending on the intended geographical location, we might need more or less solar panels - for example, we need more solar panels in northeastern U.S. to produce the same overall power as those living in Arizona. `r citep(basics)`
+
+![Solar Radiation in USA](images/SolarRaditaion_USA.PNG)
+
+\newpage
+
+## Components used to provide solar power:
+
+  The 4 primary components for producing electricity using solar power, which commonly provides 110-120 volt AC power for daily use are: Solar panels, charge controller, battery and inverter. Solar panels charge the battery, and the charge regulator ensures proper charging of the battery. The battery provides DC voltages to the inverter, and the inverter converts the DC voltage to normal AC voltage.
+
+![Components of Solar power system](images/Basic_Comps.PNG)
+
+\newpage
+
+
+# Literature Review  
+
+## PV Panels
+
+We have reviewed few articles, news items, journal papers related to the solar power generation and consumption. The journal paper `r citep(ScienceDirect)` talks about the *Solar photovoltaic electricity: Current and future prospects* , which mainly focuses on the PV market and several leading types of solar cells, such as c-Si, pc-Si and amorphous-Si and nano-PV.  ![Global PV production](images/PV_Production.PNG)
+
+This paper talks about the *third generation PV* thats based on nanostructures. Nanostructured solar cells offer several advantages for solar cells, including: (1) the ability to exceed a single junction solar cell efficiency by implementing new concepts, (2) the ability to overcome practical limitations in existing devices, such as tailoring the material properties of existing materials or using nanostructures to overcome constraints related to lattice matching, and (3) the potential for low-cost solar cell structures using self-assembled nanostructures.  <center>![Cost Efficiency](images/PV_CostEff.jpg)</center>
+
+## Energy Sources in U.S.
+
+We also reviewed *eia* (_U.S.Energy Information Administration_) articles and statistics related to various engergy consumptions by source. `r citep(eia)`. Majority of the energy in U.S. is sourced from *pertroleum* today, followed by *natural gas*, *coal*, *nuclear*, and then *renewable energy* (10%). Among the renewable energy *solar* quota is only 6% today. So with the costs of the solar energy coming down and the grid electricity costs are increasing `r citep(energysage)` , this may be the better time to explore the renewable energey opportunities.
+
+<center>![Cost Efficiency](images/energy_consumption_by_source_2015-large.jpg)</center>
+
+## Is residential electricity price going up or down ?
+
+ The article `r citep(energysage)` mentions that the retail residential electricity rates ( the amount you pay per kilowatt-hour) have risen across the nation at a rate of about *4%* on average over the last 10 years. Natural gas prices are likely to increase , and as they do electricity rates will rise; However, some areas of country have witnessed sharper price increases than others: for example, electricity rates in Hawaii have more than doubled over the past 10 years, while they've hardly changed in Texas. However, having a solar energy system can help you insulate against these fluctuations.
+
+
+![Electricity Price Changes](images/US-residential-electricity-prices-monthly-Nov-2005-Nov-20014-Small.PNG)
+
+\newpage
+
+## Simulators
+
+Reviewed the journal paper *A detailed modeling of photovoltaic module using MATLAB*, which focuses on simulating a PV module. The PV module is the interface which converts light into electricity. The input variables here is the weather data (irradiance and temparature), and the output is the *current / power / voltage*. The paper presented a detailed modeling of the effect of irradiance and temparature on the parameters of the PV module. The simulation was conducted using MATLAB/SimuLink software.
+
+Also reviewed another case study *Solar power plant performance evaluation: simulation and experimental validation* `r citep(IOPScience)`, which evaluated the performance of solar power plant located in central Manchester. Measurements were taken over 21 month's period; using hourly average irradiance and cell temparature. The developed performance evaulation technique could be adoped to detech reasons that may degrade the performance of the PV panels such as heavy snow, shading and dirt. The paper concludes that good agreement was achieved between the theoretical simulation and the real time measurement taken the online grid connected solar power plant.
+
+
+# Methodology 
+
+This project will be split into 2 main parts.
+
+- Energy Generation
+- Energy Consumption
+
+## Data Preparation 
+
+This phase primarily focuses on collecting various data elements for both energy generation and consumption:
+
+Some of the data preparation steps may include:
+
+- Find Dataset to help us estimate/model usable daylight for a specific location
+- Find information regaurding how much power is generated with a PV system. i.e. a 4kw sytem needs 5 panels or 30 square feet of panels. etc.
+- What is average family size (adults and children)
+- Family composition. Is the house empty during work hours? 
+- What is the roof size and how much panels can it hold
+- Typical household electricity usage.
+- Typical electrical appliance usage in the house
+
+## Simulation & Model Development 
+
+Our primary objective here is to determine *if solar energy system makes economic sense or not*. So, we will attempt to simulate the energy generation with various solar panel systems, and household utilities, and eventually compare the overall cost with the grid based electricity.
+
+For simulation we will be using the *R / R-Studio* and *Simio* environments.
+
+## Validation 
+
+Compare the solar Vs grid based electricity costs, also research the future state of the costs for both solar and traditional electricity sources. 
+
+# Experimentation and Results 
+
+## Data Preparation 
+
+ Lets prepare the monthly average hours of sunlight of New York City `r citep(ny.solar)` , and the average consumption `r citep(house.hold)`:
+
 ```{r}
 #Monthly Avg Hours sunlight - NYC
 #http://rredc.nrel.gov/solar/old_data/nsrdb/1961-1990/redbook/sum2/94728.txt
@@ -21,12 +225,26 @@ monthlyavg <- c(3.2, 4.0, 4.8, 5.2, 5.4, 5.5, 5.6, 5.5, 5.0, 4.4, 3.2, 2.8)
 monthlymin <- c(2.5, 3.2, 3.9, 4.4, 4.5, 4.5, 4.8, 4.9, 4.3, 3.7, 2.4, 1.9)
 monthlymax <- c(4.0, 5.2, 5.7, 6.0, 6.1, 6.2, 6.1, 6.1, 5.8, 5.6, 4.1, 3.4)
 monthdays <- c(31,28,31,30,31,30,31,31,30,31,30,31)
-
+month <- c(1:12)
 
 #https://rocscience.com/help/roctopple/webhelp/roctopple/Triangular_Distribution.htm
 monthlyMode <- 3*monthlyavg-monthlymin-monthlymax
+
+sun.df <- data.frame(monthdays, monthlymin, monthlymax, monthlyavg, month)
+
+sun.df$month <- factor(sun.df$month)
+g1 <-  ggplot(data = sun.df , aes(x=month, y=monthlyavg)) + geom_bar(stat="identity") +  theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) + ggtitle("Monthly Avg sunlight")
+
+g2 <-  ggplot(data = sun.df , aes(x=month, y=monthlymin)) + geom_bar(stat="identity") +  theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) + ggtitle("Monthly Min sunlight")
+
+g3 <-  ggplot(data = sun.df , aes(x=month, y=monthlymax)) + geom_bar(stat="identity") +  theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) + ggtitle("Monthly Max sunlight")
+
+g4 <-  ggplot(data = sun.df , aes(x=month, y=monthlyMode)) + geom_bar(stat="identity") +  theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) + ggtitle("Monthly Mod sunlight")
+
+grid.arrange(g1,  g2, g3, g4, nrow=2, top = "Sunlight in NYC")
 ```
 
+Now, fetch the average power consumption for home appliances and electronics in NYC `r citep(eia)`, the below shows the daily averaged values in Kw hrs.
 
 ```{r}
 #Appliance Consumption
@@ -34,82 +252,135 @@ monthlyMode <- 3*monthlyavg-monthlymin-monthlymax
 
 #Average NY Electricity Use
 #http://www.eia.gov/electricity/sales_revenue_price/xls/table5_a.xlsx
+
+#Average Family size: 2.54
+#https://www.statista.com/statistics/183648/average-size-of-households-in-the-us/
+#Census.gov :2.63
+
+#Observed Data
+monthlyusage <- c(491,409,78,616,198,1321,1849,1265,512,312,310,491)
+averageuse <- monthlyusage/monthdays
+
+sun.df$monthlyusage <- monthlyusage
+sun.df$daily.avgusage <- averageuse
+
+ggplot(data = sun.df , aes(x=month, y=daily.avgusage)) + geom_bar(stat="identity") +  theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) + ggtitle("Daily Avg usage/month")
 ```
 
-Average monthly usage of electric power in a 2000 sq feet house in NY
+Note: Per EIA, the electricity usage in U.S. follows the normal distribution with sd of 1520 Kw hrs. In overall U.S. the average household power usage is 901 Kwh/month and 10812 Kwh/year.
 
-```{r}
-replication <- 100
-panel.size <- 25
-```
+## Simulation
 
-### Power Generated and consumed 
-There are losses in converting the energy from the sun into DC power, and turning the DC power into AC power. This ratio of AC to DC is called the 'derate factor', and is typically about .8.
+Typically, a modern solar panel produces between 250 to 270 watts of peak power (0.25 to 0.27 kW per hr).Because of physics, there are losses in converting the energy from the sun into DC power, and turning the DC power into AC power. This ratio of AC to DC is called the 'derate factor', and is typically about .8. This means we convert about 80% of the DC power into AC power.
 
+To figure out how many kilowatt-hours (kWh) OUR solar panel system puts out per year, WE need to multiply the size of OUR system in kW DC times the .8 derate factor times the number of hours of sun. So if we have a 7.5 kW DC system working an average of 5 hours per day, 365 days a year, it'll result in 10,950 kWh in a year.
 
-```{r}
+### Simulation in R
+
+Here's the high level view of the simulation flow in R:
+
+<center>![Cost Efficiency](images/Flowchart.png)</center>
+
+```{r, eval=FALSE}
+
+replication <-100
+#panel.size <- 5
+panel.seq <- seq(from=5, to=40, by=5)
+
 #Simulation Starts here
-for(run in 1:replication) 
+pwr.con <- data.frame()
+summary.gen <- data.frame()
+summary.con <-data.frame()
+
+for (panel in panel.seq)
 {
-  #https://understandsolar.com/calculating-kilowatt-hours-solar-panels-produce/
-  
-  panel.kwh <- rtriangle(365,.25,.27,.26)
-  
-  dayssunlight <- vector()
-  for (i in 1:length(monthdays))
+  panel.size <- panel
+  pwr.gen <- data.frame()
+
+  for(run in 1:replication) 
   {
-    dayssunlight <- c(dayssunlight,(rtriangle(monthdays[i],monthlymin[i],monthlymax[i],monthlyMode[i])))
+    #https://understandsolar.com/calculating-kilowatt-hours-solar-panels-produce/
+    panel.kwh <- rtriangle(365,.2,.27,.25)
+    
+    dayssunlight <- vector()
+    for (i in 1:length(monthdays))
+    {
+      dayssunlight <- c(dayssunlight,(rtriangle(monthdays[i],monthlymin[i],monthlymax[i],monthlyMode[i])))
+    }
+    
+    #80% Derate Factor
+    power.gen <-(dayssunlight*panel.size*panel.kwh)*.8
+  
+    rnd.daily <- vector()
+    for (i in 1:length(monthdays))
+    {
+      rnd.daily <- c(rnd.daily,(rnorm(monthdays[i],averageuse[i])))
+    }
+    
+    run.gen <- t(as.data.frame(power.gen))
+    run.gen <- cbind(panel.size,run.gen)
+    pwr.gen <- rbind(pwr.gen, run.gen)
+
+    run.consume <- t(as.data.frame(rnd.daily))
+    pwr.con <- rbind(pwr.con, run.consume)
+    
   }
+  colnames(pwr.gen) <- c('Num Panels', 1:365)
+  rownames(pwr.gen) <- c(1:nrow(pwr.gen))
   
-  #80% Derate Factor
-  power.gen <-(dayssunlight*panel.size*panel.kwh)*.8
+  #colnames(pwr.con) <- c(1:365)
+  #rownames(pwr.con) <- c(1:nrow(pwr.con))
   
-  rnd.daily <- vector()
-  for (i in 1:length(monthdays))
-  {
-    rnd.daily <- c(rnd.daily,(rnorm(monthdays[i],averageuse[i])))
-  }
+  temp.gen <- t(as.data.frame(apply(pwr.gen,2,mean)))
+  #temp.con <- t(as.data.frame(apply(pwr.con,2,mean)))
   
-  run.gen <- t(as.data.frame(power.gen))
-  run.data <- cbind(run,'Generate',run.gen)
-  
-  run.consume <- t(as.data.frame(rnd.daily))
-  run.data2 <- cbind(run,'Consume',run.consume)
-  
-  power <- rbind(power, run.data)
-  power <- rbind(power, run.data2)
+  summary.gen <- rbind(summary.gen, temp.gen)
+  #summary.con <- rbind(summary.con, temp.con)
 }
 
-colnames(power) <- c('Run','Type', 1:365)
-rownames(power) <- c(1:nrow(power))
-power
+summary.con <- t(as.data.frame(apply(pwr.con,2,mean)))
+
+total.gen <- as.data.frame(apply(summary.gen[,-1], 1, sum))
+#summary.gen <-
+
+colnames(summary.gen) <- c('Num Panels', 1:365)
+rownames(summary.gen) <- c(1:nrow(summary.gen))
+
+colnames(summary.con) <- c(1:365)
+rownames(summary.con) <- c(1:nrow(summary.con))
 
 ```
 
-The average cost per watt in the U.S. is $2.23 per watt.
-Average energy bill 
-```{r}
+**TODO:  Can we show the summaries here ?, need some help to understand the summaries to show**
+ 
 
+### Simulation in Simio
+
+Since we were not able to simulate the solar circuit with Simio, we tried to simulate the flow of watts with few pre-defined assumptions ( like average 6 hours of peak sun - each 2Kw panel generates 320 watts, and the assumptions for utilites - 60 watts per hour for house lights for 3 hours per day, 210 watts per hour for television for about 2 to 3 hours a day, 140 watts for refrigerator, 500 watts usage of microwave for 30 minutes, 75 watts per hour for computer etc.) 
+
+And tried to simulate the 4 KW Panels with generally used household appliances. 
+
+<center>![Simio](images/Simio_1.png)</center>
+
+<center>![Simio](images/Simio_results_1.png)</center>
+
+
+
+## Validation
+
+
+
+
+# Conclusion 
+
+
+\newpage
+
+# References
+
+```{r bib-references, results='asis', echo=FALSE, message=FALSE}
+BibOptions(style="html", bib.style="authortitle")
+bibliography()
 ```
-
-
-
-cost effective
-
-
-Cost of solar panel
-6kW solar energy system cost: $15,000
-8kW solar energy system cost: $20,000
-10kW solar energy system cost: $25,000
-
-How many panels need to be installed to efficiently satisfy an average US energy need?
-
-Initial cost ?
-Life expectency of the panel?
-
-
-
-
-
 
 
