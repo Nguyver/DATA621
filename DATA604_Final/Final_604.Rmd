@@ -37,6 +37,8 @@ library(rprojroot)
 library(triangle)
 library(ggplot2)
 library(gridExtra)
+library(dplyr)
+library(reshape)
 ```
 
 
@@ -281,7 +283,7 @@ Here's the high level view of the simulation flow in R:
 
 <center>![Cost Efficiency](images/Flowchart.png)</center>
 
-```{r, eval=FALSE}
+```{r}
 
 replication <-100
 #panel.size <- 5
@@ -349,10 +351,64 @@ rownames(summary.gen) <- c(1:nrow(summary.gen))
 colnames(summary.con) <- c(1:365)
 rownames(summary.con) <- c(1:nrow(summary.con))
 
+
+#### Simulation Results:
+summary.gen.long <- reshape(summary.gen, direction="long", varying=list(names(summary.gen)[2:366]), v.names="Value", idvar=c("NumPanels"))
+
+#View(summary.gen.long)
+summary.gen.long1 <- summary.gen.long %>%
+                     mutate(month = ifelse(time %in% c(1:31), "Jan" , 
+                                    ifelse(time %in% c(32:59), "Feb",
+                                    ifelse(time %in% c(60:90), "Mar",
+                                    ifelse(time %in% c(91:120), "Apr",
+                                    ifelse(time %in% c(121:151), "May",
+                                    ifelse(time %in% c(152:181), "Jun",
+                                    ifelse(time %in% c(182:212), "Jul",
+                                    ifelse(time %in% c(213:243), "Aug",
+                                    ifelse(time %in% c(244:273), "Sep",
+                                    ifelse(time %in% c(274:304), "Oct",
+                                    ifelse(time %in% c(305:334), "Nov",
+                                    ifelse(time %in% c(335:365), "Dec",NA)))))))))))))
+
+#View(summary.gen.long1)
+summary.gen.long1$month <- factor(summary.gen.long1$month, levels= c("Jan", "Feb", "Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"))
+
+
+panel_5 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '5')
+panel_10 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '10')
+panel_15 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '15')
+panel_20 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '20')
+panel_25 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '25')
+panel_30 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '30')
+
+g1 <- ggplot(panel_5, aes(time, Value)) + geom_line()
+g2 <- ggplot(panel_10, aes(time, Value)) + geom_line()
+g3 <- ggplot(panel_15, aes(time, Value)) + geom_line() 
+g4 <- ggplot(panel_20, aes(time, Value)) + geom_line() 
+g5 <- ggplot(panel_25, aes(time, Value)) + geom_line() 
+g6 <- ggplot(panel_30, aes(time, Value)) + geom_line() 
+
+grid.arrange(g1,  g2, g3, g4,g5,g6, nrow=3, top = "Power Generation from Panels")
+
+ggplot(panel_25, aes(x=month, y=Value)) + geom_bar(stat="identity") + ggtitle("Kwt generated with 25 panels - Monthly View")
+
+#Energy Consumption Summary Plots###########
+
+temp.con <- as.data.frame(summary.con)
+
+rownames(temp.con) <- c('power.con.kw')
+temp.con1 <- reshape(temp.con, direction="long", varying=list(names(temp.con)[1:365]), v.names="Value")
+
+ggplot(temp.con1, aes(time, Value)) + geom_line() + xlab("Days in a Year") + ylab("KWt") + ggtitle("Average Power Consumption for an year")
+
+#ggplot(data = test , aes(x=test$'Num Panels', y=test$Value)) +  geom_line() + geom_point()
+
+#sum(temp.con1$Value)
+#sum(panel_25$Value)
 ```
 
-**TODO:  Can we show the summaries here ?, need some help to understand the summaries to show**
- 
+The total power consumption from simulation is around 7900 Kwt Hrs. So, we need 25 panels, to generate the 8000 Kwt Hrs of power.
+
 
 ### Simulation in Simio
 
