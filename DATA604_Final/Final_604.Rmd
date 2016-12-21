@@ -152,9 +152,9 @@ Solar; Photovoltacis; Power Inverter; electricity; kWh
 
 # Introduction
 
-The world energy consumption is 10 terawatts per year, and by 2050, its projected to be about 30 TW. The world will need about 20 TW of non-$CO_{2}$ energy to stabilize the $CO_2$ in the atmosphere by mid-century.The simplest scenario to stabilize $CO_2$ by mid-century is to use the renewables for electricity generation `r citep(ScienceDirect)`.
+The world energy consumption is 10 terawatts per year, and by 2050, its projected to be about 30 TW. The world will need about 20 TW of non-$CO_{2}$ energy to stabilize the $CO_2$ in the atmosphere by mid-century. The simplest scenario to stabilize $CO_2$ by mid-century is to use the renewables for electricity generation `r citep(ScienceDirect)`.
 
-Solar power works well for majority of the items except large electric appliances that use an electric *heat element* such as a water heater, clothes dryer and electric stove - for example - or total electric home heating systems. Its not cost effective to use solar power for these items. So, for these utilities , natural gas, propane or other alternative is usually recommended. 
+Solar power works well for the majority of the items except large electric appliances that use an electric *heat element* such as a water heater, clothes dryer, electric stove and total electric home heating systems. Its not cost effective to use solar power for these items. So, for these utilities , natural gas, propane or other alternative is usually recommended. 
 
 Using solar power to produce electricity is not the same as using solar to produce heat. Solar *thermal* principles are applied to produce hot fluids or air. *Photovoltaic* principles are used to produce electricity. A solar panel (PV Panel) is made of the natural element, *silicon*, which becomes charged electrically when subjected to sun light. This electrical charge is consolidated in the PV Panel and directed to the output terminals to produce low voltage (Direct Current). The intensity of the Sun's radiation changes with the hour of the day, time of the year and weather conditions. So, to be able to make calculations in planning a system, the total amount of solar radiation energy is expressed in hour of full sunlight per day - *peak sun hours* (average amount of sun available per day thoughout the year). So depending on the intended geographical location, we might need more or less solar panels - for example, we need more solar panels in northeastern U.S. to produce the same overall power as those living in Arizona. `r citep(basics)`
 
@@ -175,19 +175,19 @@ Using solar power to produce electricity is not the same as using solar to produ
 
 ## PV Panels
 
-We have reviewed few articles, news items, journal papers related to the solar power generation and consumption. The journal paper `r citep(ScienceDirect)` talks about the *Solar photovoltaic electricity: Current and future prospects* , which mainly focuses on the PV market and several leading types of solar cells, such as c-Si, pc-Si and amorphous-Si and nano-PV.  ![Global PV production](images/PV_Production.PNG)
+We have reviewed a few articles, news items, journal papers related to the solar power generation and consumption. The journal paper `r citep(ScienceDirect)` talks about the *Solar photovoltaic electricity: Current and future prospects* , which mainly focuses on the PV market and several leading types of solar cells, such as c-Si, pc-Si and amorphous-Si and nano-PV.  ![Global PV production](images/PV_Production.PNG)
 
 This paper talks about the *third generation PV* thats based on nanostructures. Nanostructured solar cells offer several advantages for solar cells, including: (1) the ability to exceed a single junction solar cell efficiency by implementing new concepts, (2) the ability to overcome practical limitations in existing devices, such as tailoring the material properties of existing materials or using nanostructures to overcome constraints related to lattice matching, and (3) the potential for low-cost solar cell structures using self-assembled nanostructures.  <center>![Cost Efficiency](images/PV_CostEff.jpg)</center>
 
 ## Energy Sources in U.S.
 
-We also reviewed *eia* (_U.S.Energy Information Administration_) articles and statistics related to various engergy consumptions by source. `r citep(eia)`. Majority of the energy in U.S. is sourced from *pertroleum* today, followed by *natural gas*, *coal*, *nuclear*, and then *renewable energy* (10%). Among the renewable energy *solar* quota is only 6% today. So with the costs of the solar energy coming down and the grid electricity costs are increasing `r citep(energysage)` , this may be the better time to explore the renewable energey opportunities.
+We also reviewed *eia* (_U.S.Energy Information Administration_) articles and statistics related to various energy consumptions by source. `r citep(eia)`. The majority of the energy in U.S. is sourced from *pertroleum* today, followed by *natural gas*, *coal*, *nuclear*, and then *renewable energy* (10%). Among the renewable energy *solar* quota is only 6% today. So with the costs of the solar energy coming down and the grid electricity costs are increasing `r citep(energysage)` , this may be the better time to explore the renewable energey opportunities.
 
 <center>![Cost Efficiency](images/energy_consumption_by_source_2015-large.jpg)</center>
 
 ## Is residential electricity price going up or down ?
 
- The article `r citep(energysage)` mentions that the retail residential electricity rates ( the amount you pay per kilowatt-hour) have risen across the nation at a rate of about *4%* on average over the last 10 years. Natural gas prices are likely to increase , and as they do electricity rates will rise; However, some areas of country have witnessed sharper price increases than others: for example, electricity rates in Hawaii have more than doubled over the past 10 years, while they've hardly changed in Texas. However, having a solar energy system can help you insulate against these fluctuations.
+ The article `r citep(energysage)` mentions that the retail residential electricity rates ( the amount you pay per kilowatt-hour) have risen across the nation at a rate of about *4%* on average over the last 10 years. Natural gas prices are likely to increase , and as they do electricity rates will rise; However, some areas of the country have witnessed sharper price increases than others: for example, electricity rates in Hawaii have more than doubled over the past 10 years, while they've hardly changed in Texas. However, having a solar energy system can help you insulate against these fluctuations.
 
 
 ![Electricity Price Changes](images/US-residential-electricity-prices-monthly-Nov-2005-Nov-20014-Small.PNG)
@@ -215,7 +215,7 @@ This phase primarily focuses on collecting various data elements for both energy
 Some of the data preparation steps may include:
 
 - Find Dataset to help us estimate/model usable daylight for a specific location
-- Find information regaurding how much power is generated with a PV system. i.e. a 4kW sytem needs 5 panels or 30 square feet of panels. etc.
+- Find information regarding how much power is generated with a PV system. i.e. a 4kW sytem needs 5 panels or 30 square feet of panels. etc.
 - What is average family size (adults and children)
 - Family composition. Is the house empty during work hours? 
 - What is the roof size and how much panels can it hold
@@ -717,40 +717,4 @@ colnames(money) <- c("Savings")
 
 bill.year <- summary.con*watt.daily
 total.year <-sum(bill.year)
-
-View(money)
-
-##-----------------------------------------------------
-
-
- 
-#totalbill for 15 years
-(sum(totalbill)*solarlifeexpectancy)
-
-diff_inenergy <- abs(sum(rnd.daily)-sum(run.gen))
-toutility <- diff_inenergy *avg.bill
-
-#Estimated Cost of solar panel
-  #6kW solar energy system cost: $15,000
-  #8kW solar energy system cost: $20,000
-  #10kW solar energy system cost: $25,000
-  #15kW solar energy system cost: $34,000
-
-
-df.solarcost <- data.frame(c(6,8,10,15),c(8,10,15),c(15000,20000,25000,34000))
-colnames(df.solarcost) <- c("Start_kwatts","End_kwatts", "cost")
-
-for (i in 1: length(df.solarcost))
-{
-  if (df.solarcost[i,1]<=sum(run.gen)/1000 && df.solarcost[i,2] >=sum(run.gen)/1000 ) 
-  {
-    initialcost <- df.solarcost[i+1,3]
-  }
-}
-
-print(initialcost)
-Total_panelcost = initialcost + toutility*solarlifeexpectancy
-
-data.frame(Total_panelcost,Total_utilityBill)
-
 ```
