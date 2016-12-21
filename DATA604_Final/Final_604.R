@@ -24,7 +24,7 @@ monthlyMode <- 3*monthlyavg-monthlymin-monthlymax
 monthlyusage <- c(491,409,78,616,198,1321,1849,1265,512,312,310,491)
 averageuse <- monthlyusage/monthdays
 
-replication <-100
+replication <-1000
 #panel.size <- 5
 panel.seq <- seq(from=5, to=40, by=5)
 
@@ -84,9 +84,77 @@ rownames(summary.gen) <- c(1:nrow(summary.gen))
 colnames(summary.con) <- c(1:365)
 rownames(summary.con) <- c(1:nrow(summary.con))
 
+View(summary.gen)
+str(summary.gen)
 
-#View(summary.gen)
-#View(summary.con)
+View(summary.con)
+str(summary.con)
+
+test <- reshape(summary.gen, direction="long", varying=list(names(summary.gen)[2:366]), v.names="Value", idvar=c("NumPanels"))
+
+View(test)
+
+library(dplyr)
+
+
+panel_5 <- test %>% filter(test$"Num Panels" == '5')
+panel_10 <- test %>% filter(test$"Num Panels" == '10')
+panel_15 <- test %>% filter(test$"Num Panels" == '15')
+panel_20 <- test %>% filter(test$"Num Panels" == '20')
+panel_25 <- test %>% filter(test$"Num Panels" == '25')
+panel_30 <- test %>% filter(test$"Num Panels" == '30')
+panel_35 <- test %>% filter(test$"Num Panels" == '35')
+panel_40 <- test %>% filter(test$"Num Panels" == '40')
+
+library(ggplot2)
+g1 <- ggplot(panel_5, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="5 Panels") 
+g2 <- ggplot(panel_10, aes(time, Value)) + geom_line()
+g3 <- ggplot(panel_15, aes(time, Value)) + geom_line() 
+g4 <- ggplot(panel_20, aes(time, Value)) + geom_line() 
+
+
+mean(panel_5$Value)
+mean(panel_10$Value)
+mean(panel_15$Value)
+mean(panel_20$Value)
+panel25_avg_kw <- mean(panel_25$Value)
+
+
+install.packages("scales")
+library(scales)
+
+avg.kwh.year <- 9500
+panels.energy <- c(0, sum(panel_5$Value),sum(panel_10$Value),sum(panel_15$Value),sum(panel_20$Value),sum(panel_25$Value),sum(panel_30$Value),sum(panel_35$Value))
+panel.count <- seq(from=0, to=35, by=5)
+(trad.elec.kwh.needed <- c(ifelse(round(avg.kwh.year - panels.energy) <= 0, 0, round(avg.kwh.year - panels.energy, 2))))
+#(yearly.saving <- paste0('$', (avg.kwh.year - trad.elec.kwh.needed) * 0.17))
+(yearly.saving <- (avg.kwh.year - trad.elec.kwh.needed) * 0.17)
+
+(validation.table <- data.frame(panel.count, 
+                               format(round(panels.energy,2), big.mark = ","),  
+                               format(trad.elec.kwh.needed, big.mark = ","),
+                               dollar_format()(yearly.saving)))
+colnames(validation.table) <- c("Panels", "Solar Energy (kWh)", "Grid Elec Need (kWh)", "Yearly Solar Savings")
+
+knitr::kable(validation.table)
+
+
+
+
+sum(panel_40$Value)
+
+test.con <- as.data.frame(summary.con)
+View(test.con)
+rownames(test.con) <- c('power.con.kw')
+test.con1 <- reshape(test.con, direction="long", varying=list(names(test.con)[2:365]), v.names="Value")
+View(test.con1)
+
+ggplot(test.con1, aes(time, Value)) + geom_line() + xlab("Days in a Year") + ylab("KWt")
+
+ggplot(data = test , aes(x=test$'Num Panels', y=test$Value)) +  geom_line() + geom_point()
+
+mean(test.con1$Value)
+
 
 
 
@@ -158,4 +226,9 @@ data.frame(Total_panelcost,Total_utilityBill)
 
 ## I would like to recommend if we add more panels and sell the extra energy to the grid, 
 #Solar panel implimentation will be more attractive to the public. That will help the environment too
+
+
+
+
+
 
