@@ -25,6 +25,7 @@ if (!require("yaml",character.only = TRUE)) (install.packages("yaml",dep=TRUE))
 if (!require("rprojroot",character.only = TRUE)) (install.packages("rprojroot",dep=TRUE))
 if (!require("knitcitations",character.only = TRUE)) (install.packages("knitcitations",dep=TRUE))
 if (!require("RefManageR",character.only = TRUE)) (install.packages("RefManageR",dep=TRUE))
+if (!require("scales",character.only = TRUE)) (install.packages("scales",dep=TRUE))
 ```
 
 ```{r , load libraries}
@@ -39,6 +40,7 @@ library(ggplot2)
 library(gridExtra)
 library(dplyr)
 library(reshape)
+library(scales)
 ```
 
 
@@ -145,7 +147,7 @@ form of energy could be used, it will be one of the most important supplies of e
 
 # Keywords
 
-Solar; Photovoltacis; Power Inverter; electricity; kW
+Solar; Photovoltacis; Power Inverter; electricity; kWh
 
 
 # Introduction
@@ -213,7 +215,7 @@ This phase primarily focuses on collecting various data elements for both energy
 Some of the data preparation steps may include:
 
 - Find Dataset to help us estimate/model usable daylight for a specific location
-- Find information regaurding how much power is generated with a PV system. i.e. a 4kw sytem needs 5 panels or 30 square feet of panels. etc.
+- Find information regaurding how much power is generated with a PV system. i.e. a 4kW sytem needs 5 panels or 30 square feet of panels. etc.
 - What is average family size (adults and children)
 - Family composition. Is the house empty during work hours? 
 - What is the roof size and how much panels can it hold
@@ -262,7 +264,7 @@ g4 <-  ggplot(data = sun.df , aes(x=month, y=monthlyMode)) + geom_bar(stat="iden
 grid.arrange(g1,  g2, g3, g4, nrow=2, top = "Sunlight in NYC")
 ```
 
-Now, fetch the average power consumption for home appliances and electronics in NYC `r citep(eia)`, the below shows the daily averaged values in Kw hrs.
+Now, fetch the average power consumption for home appliances and electronics in NYC `r citep(eia)`, the below shows the daily averaged values in kWh.
 
 ```{r}
 #Appliance Consumption
@@ -285,11 +287,11 @@ sun.df$daily.avgusage <- averageuse
 ggplot(data = sun.df , aes(x=month, y=daily.avgusage)) + geom_bar(stat="identity") +  theme(axis.text=element_text(size=8), axis.title=element_text(size=10)) + ggtitle("Daily Avg usage/month")
 ```
 
-Note: Per EIA, the electricity usage in U.S. follows the normal distribution with sd of 1520 Kw hrs. In overall U.S. the average household power usage is 901 Kwh/month and 10812 Kwh/year.
+Note: Per EIA, the electricity usage in U.S. follows the normal distribution with sd of 1520 kWh. In overall U.S. the average household power usage is 901 kWh/month and 10812 kWh/year.
 
 ## Simulation
 
-Typically, a modern solar panel produces between 250 to 270 watts of peak power (0.25 to 0.27 kW per hr).Because of physics, there are losses in converting the energy from the sun into DC power, and turning the DC power into AC power. This ratio of AC to DC is called the 'derate factor', and is typically about .8. This means we convert about 80% of the DC power into AC power.
+Typically, a modern solar panel produces between 250 to 270 watts of peak power (0.25 to 0.27 kWh).Because of physics, there are losses in converting the energy from the sun into DC power, and turning the DC power into AC power. This ratio of AC to DC is called the 'derate factor', and is typically about .8. This means we convert about 80% of the DC power into AC power.
 
 To figure out how many kilowatt-hours (kWh) OUR solar panel system puts out per year, WE need to multiply the size of OUR system in kW DC times the .8 derate factor times the number of hours of sun. So if we have a 7.5 kW DC system working an average of 5 hours per day, 365 days a year, it'll result in 10,950 kWh in a year.
 
@@ -301,7 +303,7 @@ Here's the high level view of the simulation flow in R:
 
 ```{r}
 
-replication <-100
+replication <-1000
 #panel.size <- 5
 panel.seq <- seq(from=5, to=40, by=5)
 
@@ -396,17 +398,19 @@ panel_15 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '15')
 panel_20 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '20')
 panel_25 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '25')
 panel_30 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '30')
+panel_35 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '35')
 
-g1 <- ggplot(panel_5, aes(time, Value)) + geom_line()
-g2 <- ggplot(panel_10, aes(time, Value)) + geom_line()
-g3 <- ggplot(panel_15, aes(time, Value)) + geom_line() 
-g4 <- ggplot(panel_20, aes(time, Value)) + geom_line() 
-g5 <- ggplot(panel_25, aes(time, Value)) + geom_line() 
-g6 <- ggplot(panel_30, aes(time, Value)) + geom_line() 
+g1 <- ggplot(panel_5, aes(time, Value)) + geom_line() +  labs(x = "Day", y = "kWh", title="5 Panels") 
+g2 <- ggplot(panel_10, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="10 Panels")
+g3 <- ggplot(panel_15, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="15 Panels")
+g4 <- ggplot(panel_20, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="20 Panels")
+g5 <- ggplot(panel_25, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="25 Panels")
+g6 <- ggplot(panel_30, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="30 Panels")
 
 grid.arrange(g1,  g2, g3, g4,g5,g6, nrow=3, top = "Power Generation from Panels")
 
-ggplot(panel_25, aes(x=month, y=Value)) + geom_bar(stat="identity") + ggtitle("Kwt generated with 25 panels - Monthly View")
+ggplot(panel_25, aes(x=month, y=Value)) + geom_bar(stat="identity") +xlab("Month") + ylab("kWh") + ggtitle("kWh generated with 25 panels - Monthly View")
+
 
 #Energy Consumption Summary Plots###########
 
@@ -423,14 +427,14 @@ ggplot(temp.con1, aes(time, Value)) + geom_line() + xlab("Days in a Year") + yla
 #sum(panel_25$Value)
 ```
 
-The total power consumption from simulation is around 7900 Kwt Hrs. So, we need 25 panels, to generate the 8000 Kwt Hrs of power.
+The total power consumption from simulation is around 7900 kWh. So, we need 25 panels, to generate the 8000 kWh of power.
 
 
 ### Simulation in Simio with specific appliances
 
-Since we were not able to simulate the solar circuit with Simio, we tried to simulate the flow of watts with few pre-defined assumptions ( like average 6 hours of peak sun - each 2Kw panel generates 320 watts, and the assumptions for utilites - 60 watts per hour for house lights for 3 hours per day, 210 watts per hour for television for about 2 to 3 hours a day, 140 watts for refrigerator, 500 watts usage of microwave for 30 minutes, 75 watts per hour for computer etc.) 
+Since we were not able to simulate the solar circuit with Simio, we tried to simulate the flow of watts with few pre-defined assumptions ( like average 6 hours of peak sun - each 2kW panel generates 320 watts, and the assumptions for utilites - 60 watts per hour for house lights for 3 hours per day, 210 watts per hour for television for about 2 to 3 hours a day, 140 watts for refrigerator, 500 watts usage of microwave for 30 minutes, 75 watts per hour for computer etc.) 
 
-And tried to simulate the 4 KW Panels with generally used household appliances. 
+And tried to simulate the 4 kW Panels with generally used household appliances. 
 
 <center>![Simio](images/Simio_1.png)</center>
 
@@ -440,16 +444,53 @@ And tried to simulate the 4 KW Panels with generally used household appliances.
 
 ## Validation
 
-Lets compare the costs of solar vs electricity:
+Here is the summarized results from our simulation above with varying panel sizes, and 1000 replications for each panel:
 
-As of early 2016, most U.S homeowners are paying $3 to $4 per watt to install a solar panel system, and the average cost per watt in the U.S. is $3.57 per watt.So, a 8kw solar energy system could cost approximately $20,000. The solar electricity that our system produces will be 'free' once the system has paid itself off (which will take approximately 5-10 years, depending on where you live).
+```{r}
+avg.kwh.year <- 9500
+
+panels.energy <- c(0, sum(panel_5$Value),sum(panel_10$Value),sum(panel_15$Value),sum(panel_20$Value),sum(panel_25$Value),sum(panel_30$Value),sum(panel_35$Value))
+
+panel.count <- seq(from=0, to=35, by=5)
+
+trad.elec.kwh.needed <- c(ifelse(round(avg.kwh.year - panels.energy) <= 0, 0, round(avg.kwh.year - panels.energy, 2)))
+
+yearly.saving <- (avg.kwh.year - trad.elec.kwh.needed) * 0.18
+
+validation.table <- data.frame(panel.count, 
+                               format(round(panels.energy,2), big.mark = ","),  
+                               format(trad.elec.kwh.needed, big.mark = ","),
+                               dollar_format()(yearly.saving))
+
+colnames(validation.table) <- c("Panels", "Avg Solar Energy (kWh)", "Avg Grid Elec Need (kWh)", "Avg Yearly Solar Savings")
+
+knitr::kable(validation.table, align = "r")
+```
+
+_Assumptions_: We did not consider the initial solar system implementation costs here for simplicity. Also, the average electricity need is assumed as around 9500 kWh (which is NYC's average. Also average cost per kWh is assumed as 18 cents). The simulation considered the average day light data in NYC.
+
+With these assumptions, it appears that, *with 30 solar panels we would be mostly self sufficient for an average annual electricity consumption needs*.
+
+\newpage
+
+__Here's a recent research that compares the costs of solar vs electricity including the initial solar costs:__
+
+As of early 2016, most U.S homeowners are paying $3 to $4 per watt to install a solar panel system, and the average cost per watt in the U.S. is $3.57 per watt.So, a 8kW solar energy system could cost approximately $20,000. The solar electricity that our system produces will be 'free' once the system has paid itself off (which will take approximately 5-10 years, depending on where you live).
 
 <center>![ElectricitySavings](images/Electricity-savings-over-20-years-example.png)</center>
 
 
 # Conclusion 
 
-As the price of solar is declining to unprecedented lows `r citep(sa)` and the increasing electricity prices (*from 9 cents per kWh in 2005 to about 13 cents per kWh in 2014*), the renewable energy sources like solar seems to be more efficient and cost-effective. Future work - Try performing a simulation of solar system circuit capturing the seasonal estimates of the solar power generation, and explore the possibility of the usage of Markov-chain model for producing the electricity consumption data from activities. `r citep(markov)`
+As the price of solar is declining to unprecedented lows `r citep(sa)` and the increasing electricity prices (*from 9 cents per kWh in 2005 to about 13 cents per kWh in 2014*), the renewable energy sources like solar seems to be more efficient and cost-effective. 
+
+## Future work:
+
+- Develop *R Shiny application*, with an ability to capture the input values for zipcode, appliances, etc. and provide recommendation for number of panels needed, battery size etc. and estimate the cost of installation, considering the factors like geographical solar radiation levels, local government solar subsidies (if any) etc.
+
+- Performing the simulation of actual solar system circuit with battery and inverter capturing the seasonal estimates of the solar power generation.
+
+- Review & Explore the possibility of the usage of Markov-chain model for producing the electricity consumption data from activities. `r citep(markov)`
 
 
 \newpage
@@ -599,13 +640,14 @@ panel_15 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '15')
 panel_20 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '20')
 panel_25 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '25')
 panel_30 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '30')
+panel_35 <- summary.gen.long1 %>% filter(summary.gen.long1$"Num Panels" == '35')
 
-g1 <- ggplot(panel_5, aes(time, Value)) + geom_line()
-g2 <- ggplot(panel_10, aes(time, Value)) + geom_line()
-g3 <- ggplot(panel_15, aes(time, Value)) + geom_line() 
-g4 <- ggplot(panel_20, aes(time, Value)) + geom_line() 
-g5 <- ggplot(panel_25, aes(time, Value)) + geom_line() 
-g6 <- ggplot(panel_30, aes(time, Value)) + geom_line() 
+g1 <- ggplot(panel_5, aes(time, Value)) + geom_line() +  labs(x = "Day", y = "kWh", title="5 Panels") 
+g2 <- ggplot(panel_10, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="10 Panels")
+g3 <- ggplot(panel_15, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="15 Panels")
+g4 <- ggplot(panel_20, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="20 Panels")
+g5 <- ggplot(panel_25, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="25 Panels")
+g6 <- ggplot(panel_30, aes(time, Value)) + geom_line() + labs(x = "Day", y = "kWh", title="30 Panels") 
 
 grid.arrange(g1,  g2, g3, g4,g5,g6, nrow=3, top = "Power Generation from Panels")
 
@@ -619,6 +661,26 @@ rownames(temp.con) <- c('power.con.kw')
 temp.con1 <- reshape(temp.con, direction="long", varying=list(names(temp.con)[1:365]), v.names="Value")
 
 ggplot(temp.con1, aes(time, Value)) + geom_line() + xlab("Days in a Year") + ylab("KWt") + ggtitle("Average Power Consumption for an year")
+
+
+avg.kwh.year <- 9500
+
+panels.energy <- c(0, sum(panel_5$Value),sum(panel_10$Value),sum(panel_15$Value),sum(panel_20$Value),sum(panel_25$Value),sum(panel_30$Value),sum(panel_35$Value))
+
+panel.count <- seq(from=0, to=35, by=5)
+
+trad.elec.kwh.needed <- c(ifelse(round(avg.kwh.year - panels.energy) <= 0, 0, round(avg.kwh.year - panels.energy, 2)))
+
+yearly.saving <- (avg.kwh.year - trad.elec.kwh.needed) * 0.17
+
+validation.table <- data.frame(panel.count, 
+                               format(round(panels.energy,2), big.mark = ","),  
+                               format(trad.elec.kwh.needed, big.mark = ","),
+                               dollar_format()(yearly.saving))
+
+colnames(validation.table) <- c("Panels", "Avg Solar Energy (kWh)", "Avg Grid Elec Need (kWh)", "Avg Yearly Solar Savings")
+
+knitr::kable(validation.table, align = "r")
 
 #ggplot(data = test , aes(x=test$'Num Panels', y=test$Value)) +  geom_line() + geom_point()
 
